@@ -18,6 +18,7 @@ import RevenueForecasting from "./components/RevenueForecasting";
 import PipelineHealth from "./components/PipelineHealth";
 import VietnamDashboard from "./components/VietnamDashboard";
 import SprintBoard from "./components/SprintBoard";
+import Contacts from "./components/Contacts";
 
 import "./App.css";
 
@@ -80,6 +81,19 @@ function App() {
             >
               <Icon icon="solar:users-group-two-rounded-bold-duotone" className="h-5 w-5" />
               <span>Customers</span>
+            </NavLink>
+            <NavLink
+              to="/contacts"
+              className={({ isActive }) =>
+                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                }`
+              }
+            >
+              <Icon icon="solar:user-id-bold-duotone" className="h-5 w-5" />
+              <span>Contacts</span>
             </NavLink>
 
             {/* Analytics Section */}
@@ -164,6 +178,7 @@ function App() {
                 <Route path="/sprint-board" element={<SprintBoard />} />
                 <Route path="/customers" element={<CustomerList />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
+                <Route path="/contacts" element={<Contacts />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/churn-prediction" element={<ChurnPrediction />} />
                 <Route path="/revenue-forecasting" element={<RevenueForecasting />} />

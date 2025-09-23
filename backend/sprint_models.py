@@ -30,7 +30,7 @@ class PersonRole(enum.Enum):
 # Team Members/Persons
 class Person(Base):
     __tablename__ = "persons"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True)
@@ -40,9 +40,48 @@ class Person(Base):
     availability = Column(Float, default=1.0)  # 0.0 to 1.0 (0% to 100% available)
     hourly_rate = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     assigned_deals = relationship("Deal", foreign_keys="Deal.assigned_person_id", back_populates="assigned_person")
+
+# Contacts Management
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Basic Information
+    full_name = Column(String, nullable=False)
+    position = Column(String)  # Job title (CEO, Director, CTO, etc.)
+    company_name = Column(String, nullable=False)
+    email = Column(String, index=True)
+    phone_number = Column(String)
+
+    # Business Information
+    gmv = Column(Float)  # Gross Merchandise Value
+    estimated_revenue = Column(Float)  # Estimated revenue potential
+    estimated_close_date = Column(DateTime)  # Estimated deal closure date
+
+    # Assignment and Status
+    contact_owner_id = Column(Integer, ForeignKey("persons.id"))  # Sales representative
+    contact_owner = relationship("Person", foreign_keys=[contact_owner_id])
+    status = Column(String, default="lead")  # Same as Deal status
+
+    # Team Assignments
+    delivery_team_assigned = Column(String)  # Team responsible for delivery
+    solution_designer_id = Column(Integer, ForeignKey("persons.id"))  # Solution designer
+    solution_designer = relationship("Person", foreign_keys=[solution_designer_id])
+
+    # Additional Information
+    note = Column(Text)  # Additional notes or comments
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Optional: Link to related deal if contact becomes a deal
+    related_deal_id = Column(Integer, ForeignKey("deals.id"))
+    related_deal = relationship("Deal", foreign_keys=[related_deal_id])
 
 # Main Deal/Sprint Card
 class Deal(Base):

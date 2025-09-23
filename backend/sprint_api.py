@@ -8,14 +8,15 @@ from datetime import datetime, timedelta
 from database import get_db
 from sprint_models import (
     Deal, Person, ConversationData, TechnicalSolution,
-    ResourceAllocation, Proposal, AIInsight, StatusHistory, Comment,
+    ResourceAllocation, Proposal, AIInsight, StatusHistory, Comment, Contact,
     DealStatus, Priority, PersonRole
 )
 from sprint_schemas import (
     DealCreate, DealUpdate, DealResponse, SprintBoardResponse,
     SprintBoardColumn, PersonCreate, PersonResponse,
     StatusUpdateRequest, AIQualificationRequest, AIQualificationResponse,
-    CommentCreate, CommentResponse, ContractCompletionStatus
+    CommentCreate, CommentResponse, ContractCompletionStatus,
+    ContactCreate, ContactUpdate, ContactResponse
 )
 from ai_agents.lead_qualification_agent import LeadQualificationAgent
 from ai_agents.solution_design_agent import SolutionDesignAgent
@@ -1169,4 +1170,138 @@ async def _trigger_proposal_generation(deal_id: int, db: Session) -> dict:
         "commercial_terms": analysis['commercial_terms'],
         "value_proposition": analysis['value_proposition'],
         "confidence": analysis['confidence']
+    }
+
+
+# ==================== CONTACTS MANAGEMENT ENDPOINTS ====================
+
+@router.get("/contacts", response_model=List[ContactResponse])
+def get_contacts(
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    company: Optional[str] = None,
+    contact_owner_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all contacts with optional filtering and pagination.
+    """
+    query = db.query(Contact)
+
+    # Apply filters
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (Contact.full_name.ilike(search_term)) |
+            (Contact.company_name.ilike(search_term)) |
+            (Contact.email.ilike(search_term)) |
+            (Contact.position.ilike(search_term))
+        )
+
+    if status:
+        query = query.filter(Contact.status == status)
+
+    if company:
+        query = query.filter(Contact.company_name.ilike(f"%{company}%"))
+
+    if contact_owner_id:
+        query = query.filter(Contact.contact_owner_id == contact_owner_id)
+
+    # Apply pagination
+    contacts = query.offset(skip).limit(limit).all()
+
+    return contacts
+
+
+@router.get("/contacts/{contact_id}", response_model=ContactResponse)
+def get_contact(contact_id: int, db: Session = Depends(get_db)):
+    """
+    Get a specific contact by ID.
+    """
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    return contact
+
+
+@router.post("/contacts", response_model=ContactResponse)
+def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
+    """
+    Create a new contact.
+    """
+    db_contact = Contact(**contact.dict())
+    db.add(db_contact)
+    db.commit()
+    db.refresh(db_contact)
+    return db_contact
+
+
+@router.put("/contacts/{contact_id}", response_model=ContactResponse)
+def update_contact(
+    contact_id: int,
+    contact_update: ContactUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update an existing contact.
+    """
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    # Update only provided fields
+    update_data = contact_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(contact, field, value)
+
+    contact.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(contact)
+    return contact
+
+
+@router.delete("/contacts/{contact_id}")
+def delete_contact(contact_id: int, db: Session = Depends(get_db)):
+    """
+    Delete a contact.
+    """
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    db.delete(contact)
+    db.commit()
+    return {"message": "Contact deleted successfully"}
+
+
+@router.get("/contacts/stats/summary")
+def get_contacts_summary(db: Session = Depends(get_db)):
+    """
+    Get summary statistics for contacts.
+    """
+    total_contacts = db.query(Contact).count()
+
+    # Count by status
+    status_counts = {}
+    for status in ["lead", "qualified_solution", "qualified_delivery", "qualified_cso", "deal", "project"]:
+        count = db.query(Contact).filter(Contact.status == status).count()
+        status_counts[status] = count
+
+    # Total estimated revenue
+    total_estimated_revenue = db.query(Contact.estimated_revenue).filter(
+        Contact.estimated_revenue.isnot(None)
+    ).all()
+    total_revenue = sum([r[0] for r in total_estimated_revenue if r[0]])
+
+    # Average GMV
+    avg_gmv = db.query(Contact.gmv).filter(Contact.gmv.isnot(None)).all()
+    average_gmv = sum([g[0] for g in avg_gmv if g[0]]) / len(avg_gmv) if avg_gmv else 0
+
+    return {
+        "total_contacts": total_contacts,
+        "status_distribution": status_counts,
+        "total_estimated_revenue": total_revenue,
+        "average_gmv": average_gmv
     }

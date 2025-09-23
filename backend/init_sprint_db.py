@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from sprint_models import (
-    Base, Deal, Person, ConversationData, Comment, DealStatus, Priority, PersonRole
+    Base, Deal, Person, ConversationData, Comment, Contact, DealStatus, Priority, PersonRole
 )
 from models import CustomerData
 import csv
@@ -562,6 +562,131 @@ def create_deal_comments(db: Session, deals, persons):
     db.commit()
     print(f"Created {comments_created} comments across {len(deals)} deals")
 
+def create_dummy_contacts(db: Session, persons: list):
+    """Create dummy contacts with realistic data"""
+
+    # Sample companies and industries
+    companies = [
+        {"name": "TechCorp Manufacturing", "industry": "Manufacturing"},
+        {"name": "SecureBank", "industry": "Financial Services"},
+        {"name": "HealthCare Solutions", "industry": "Healthcare"},
+        {"name": "RetailPlus", "industry": "E-commerce"},
+        {"name": "GlobalTrade Corp", "industry": "Supply Chain"},
+        {"name": "FastShip Logistics", "industry": "Logistics"},
+        {"name": "EduTech Institute", "industry": "Education"},
+        {"name": "PropTech Realty", "industry": "Real Estate"},
+        {"name": "BuildFast Construction", "industry": "Construction"},
+        {"name": "GreenEnergy Solutions", "industry": "Energy"},
+        {"name": "DataFlow Analytics", "industry": "Data Analytics"},
+        {"name": "CloudFirst Technologies", "industry": "Cloud Services"},
+        {"name": "AutoDrive Motors", "industry": "Automotive"},
+        {"name": "FoodChain Distributors", "industry": "Food & Beverage"},
+        {"name": "MedDevice Innovations", "industry": "Medical Devices"}
+    ]
+
+    # Sample positions
+    positions = [
+        "CEO", "CTO", "CFO", "COO", "VP of Technology", "VP of Sales",
+        "Director of IT", "Director of Operations", "Head of Digital",
+        "Chief Digital Officer", "VP of Engineering", "Head of Innovation",
+        "Director of Strategy", "VP of Business Development", "Chief Innovation Officer"
+    ]
+
+    # Sample delivery teams
+    delivery_teams = [
+        "Alpha Team", "Beta Team", "Gamma Team", "Delta Team", "Enterprise Team",
+        "Innovation Lab", "Core Platform Team", "Digital Solutions Team"
+    ]
+
+    # Sample statuses with realistic distribution
+    statuses = [
+        ("lead", 0.3),
+        ("qualified_solution", 0.25),
+        ("qualified_delivery", 0.2),
+        ("qualified_cso", 0.15),
+        ("deal", 0.07),
+        ("project", 0.03)
+    ]
+
+    contacts = []
+
+    for i in range(30):  # Create 30 contacts
+        company = random.choice(companies)
+        position = random.choice(positions)
+
+        # Generate realistic names
+        first_names = ["John", "Jane", "Michael", "Sarah", "David", "Lisa", "Robert", "Emily",
+                      "James", "Maria", "William", "Jennifer", "Richard", "Patricia", "Charles"]
+        last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
+                     "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson"]
+
+        first_name = random.choice(first_names)
+        last_name = random.choice(last_names)
+        full_name = f"{first_name} {last_name}"
+
+        # Generate email
+        email = f"{first_name.lower()}.{last_name.lower()}@{company['name'].lower().replace(' ', '').replace('corp', 'corp')}.com"
+
+        # Generate phone number
+        phone = f"+1-{random.randint(200, 999)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
+
+        # Select status based on distribution
+        status_choice = random.random()
+        cumulative = 0
+        selected_status = "lead"
+        for status, probability in statuses:
+            cumulative += probability
+            if status_choice <= cumulative:
+                selected_status = status
+                break
+
+        # Generate realistic financial data based on company size and industry
+        base_gmv = random.uniform(50000, 2000000)
+        estimated_revenue = base_gmv * random.uniform(0.1, 0.3)  # 10-30% of GMV
+
+        # Generate estimated close date (next 3-12 months)
+        days_ahead = random.randint(30, 365)
+        estimated_close_date = datetime.now() + timedelta(days=days_ahead)
+
+        # Assign contact owner and solution designer
+        contact_owner = random.choice([p for p in persons if p.role == PersonRole.SALES])
+        solution_designer = random.choice([p for p in persons if p.role in [PersonRole.HEAD_OF_ENGINEERING, PersonRole.HEAD_OF_DELIVERY]])
+
+        # Generate notes
+        notes = [
+            f"Interested in {company['industry'].lower()} solutions",
+            f"Looking to modernize their {company['industry'].lower()} operations",
+            f"Evaluating multiple vendors for {company['industry'].lower()} transformation",
+            f"Budget approved for Q{random.randint(1,4)} implementation",
+            f"Strong technical team, looking for strategic partnership",
+            f"Previous experience with similar solutions in {company['industry'].lower()}",
+            f"Urgent need due to {company['industry'].lower()} compliance requirements"
+        ]
+
+        contact = Contact(
+            full_name=full_name,
+            position=position,
+            company_name=company["name"],
+            email=email,
+            phone_number=phone,
+            gmv=base_gmv,
+            estimated_revenue=estimated_revenue,
+            estimated_close_date=estimated_close_date,
+            contact_owner_id=contact_owner.id,
+            status=selected_status,
+            delivery_team_assigned=random.choice(delivery_teams),
+            solution_designer_id=solution_designer.id,
+            note=random.choice(notes),
+            created_at=datetime.now() - timedelta(days=random.randint(1, 180))
+        )
+
+        db.add(contact)
+        contacts.append(contact)
+
+    db.commit()
+    print(f"Created {len(contacts)} contacts")
+    return contacts
+
 def initialize_sprint_database():
     """Initialize the sprint board database with dummy data"""
     
@@ -588,21 +713,31 @@ def initialize_sprint_database():
         print("\n4. Creating deal comments...")
         create_deal_comments(db, deals, persons)
 
+        print("\n5. Creating contacts...")
+        contacts = create_dummy_contacts(db, persons)
+
         print(f"\n✅ Sprint board initialization complete!")
         print(f"Created:")
         print(f"  - {len(persons)} team members")
         print(f"  - {len(deals)} deals")
+        print(f"  - {len(contacts)} contacts")
         print(f"  - Conversation data for deals")
-        
+
         print(f"\nDeals by status:")
         for status in DealStatus:
             count = len([d for d in deals if d.status == status])
             print(f"  - {status.value.replace('_', ' ').title()}: {count}")
-        
+
+        print(f"\nContacts by status:")
+        for status in ["lead", "qualified_solution", "qualified_delivery", "qualified_cso", "deal", "project"]:
+            count = len([c for c in contacts if c.status == status])
+            print(f"  - {status.replace('_', ' ').title()}: {count}")
+
         print(f"\nYou can now:")
         print(f"  1. Start the backend: cd backend && uvicorn main:app --reload")
         print(f"  2. Start the frontend: cd frontend && npm start")
         print(f"  3. Visit: http://localhost:3000/sprint-board")
+        print(f"  4. Visit: http://localhost:3000/contacts")
         
     except Exception as e:
         print(f"Error initializing database: {e}")

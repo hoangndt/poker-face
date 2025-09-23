@@ -41,7 +41,53 @@ class PersonCreate(PersonBase):
 class PersonResponse(PersonBase):
     id: int
     created_at: datetime
-    
+
+    class Config:
+        from_attributes = True
+
+# Contact Schemas
+class ContactBase(BaseModel):
+    full_name: str
+    position: Optional[str] = None
+    company_name: str
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+    gmv: Optional[float] = None
+    estimated_revenue: Optional[float] = None
+    estimated_close_date: Optional[datetime] = None
+    contact_owner_id: Optional[int] = None
+    status: Optional[str] = "lead"
+    delivery_team_assigned: Optional[str] = None
+    solution_designer_id: Optional[int] = None
+    note: Optional[str] = None
+    related_deal_id: Optional[int] = None
+
+class ContactCreate(ContactBase):
+    pass
+
+class ContactUpdate(BaseModel):
+    full_name: Optional[str] = None
+    position: Optional[str] = None
+    company_name: Optional[str] = None
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+    gmv: Optional[float] = None
+    estimated_revenue: Optional[float] = None
+    estimated_close_date: Optional[datetime] = None
+    contact_owner_id: Optional[int] = None
+    status: Optional[str] = None
+    delivery_team_assigned: Optional[str] = None
+    solution_designer_id: Optional[int] = None
+    note: Optional[str] = None
+    related_deal_id: Optional[int] = None
+
+class ContactResponse(ContactBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    contact_owner: Optional[PersonResponse] = None
+    solution_designer: Optional[PersonResponse] = None
+
     class Config:
         from_attributes = True
 

@@ -52,7 +52,15 @@ export const sprintAPI = {
   // Person management
   getPersons: () => api.get('/sprint/persons'),
   createPerson: (personData) => api.post('/sprint/persons', personData),
-  
+
+  // Contacts management
+  getContacts: (params = {}) => api.get('/sprint/contacts', { params }),
+  getContact: (contactId) => api.get(`/sprint/contacts/${contactId}`),
+  createContact: (contactData) => api.post('/sprint/contacts', contactData),
+  updateContact: (contactId, contactData) => api.put(`/sprint/contacts/${contactId}`, contactData),
+  deleteContact: (contactId) => api.delete(`/sprint/contacts/${contactId}`),
+  getContactsSummary: () => api.get('/sprint/contacts/stats/summary'),
+
   // AI Insights
   triggerAIInsight: (dealId, currentStatus) => api.post(`/sprint/ai/insight/${dealId}`, { current_status: currentStatus }),
   getAIInsights: (dealId) => api.get(`/sprint/ai/insights/${dealId}`),
