@@ -145,18 +145,18 @@ def create_dummy_deals(db: Session, persons: list):
         "Barbara Lewis", "Matthew Walker", "Susan Hall", "Anthony Allen", "Nancy Young"
     ]
 
-    # Decision makers templates for different company sizes
-    decision_makers_templates = [
-        "CEO, CTO",
-        "CEO, CFO, CTO",
-        "VP Engineering, Director of Operations",
-        "CTO, Head of Product",
-        "CEO, VP Sales, CTO",
-        "Managing Director, IT Director",
-        "President, VP Technology",
-        "CEO, Head of Digital Transformation",
-        "CTO, VP Engineering, Product Manager",
-        "CEO, CFO, Head of IT"
+    # Decision makers - use actual person names instead of titles
+    decision_makers_names = [
+        "John Smith, Sarah Johnson",
+        "Michael Brown, Lisa Davis, Robert Wilson",
+        "Jennifer Garcia, David Miller, Susan Anderson",
+        "James Thompson, Patricia White",
+        "Christopher Lee, Linda Harris, Daniel Clark",
+        "Barbara Lewis, Matthew Walker",
+        "Susan Hall, Anthony Allen, Nancy Young",
+        "Mark Taylor, Karen Thomas",
+        "Paul Jackson, Helen White, Steven Harris",
+        "Donna Martin, Kevin Thompson, Betty Garcia"
     ]
 
     velocities = ["Fast", "Medium", "Slow"]
@@ -277,7 +277,7 @@ def create_dummy_deals(db: Session, persons: list):
         velocity = random.choice(velocities)
         deal_stage = random.choice(deal_stages)
         contact_person = random.choice(contact_names)
-        decision_makers = random.choice(decision_makers_templates)
+        decision_makers = random.choice(decision_makers_names)
         deal_probability = random.randint(10, 95)
 
         # Calculate weighted amount in Euros

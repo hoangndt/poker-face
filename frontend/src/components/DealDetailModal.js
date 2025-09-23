@@ -545,6 +545,7 @@ const ConversationTab = ({ dealData }) => {
 
   return (
     <div className="space-y-6">
+      {/* Business Context */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="bg-blue-50 rounded-lg p-4">
@@ -553,34 +554,63 @@ const ConversationTab = ({ dealData }) => {
           </div>
 
           <div className="bg-green-50 rounded-lg p-4">
-            <h3 className="font-medium text-green-900 mb-2">Current Solutions</h3>
-            <p className="text-sm text-green-800">{conversation_data.current_solutions || 'Not specified'}</p>
+            <h3 className="font-medium text-green-900 mb-2">Business Goals</h3>
+            <p className="text-sm text-green-800">{conversation_data.business_goals || 'Not specified'}</p>
           </div>
 
-          <div className="bg-purple-50 rounded-lg p-4">
-            <h3 className="font-medium text-purple-900 mb-2">Technical Preferences</h3>
-            <p className="text-sm text-purple-800">{conversation_data.tech_preferences || 'Not specified'}</p>
+          <div className="bg-red-50 rounded-lg p-4">
+            <h3 className="font-medium text-red-900 mb-2">Pain Points</h3>
+            <p className="text-sm text-red-800">{conversation_data.pain_points || 'Not specified'}</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 mb-2">Current Solutions</h3>
+            <p className="text-sm text-gray-700">{conversation_data.current_solutions || 'Not specified'}</p>
           </div>
         </div>
 
         <div className="space-y-4">
+          <div className="bg-purple-50 rounded-lg p-4">
+            <h3 className="font-medium text-purple-900 mb-2">Technical Preferences</h3>
+            <p className="text-sm text-purple-800">{conversation_data.tech_preferences || 'Not specified'}</p>
+          </div>
+
+          <div className="bg-orange-50 rounded-lg p-4">
+            <h3 className="font-medium text-orange-900 mb-2">Integration Needs</h3>
+            <p className="text-sm text-orange-800">{conversation_data.integration_needs || 'Not specified'}</p>
+          </div>
+
+          <div className="bg-pink-50 rounded-lg p-4">
+            <h3 className="font-medium text-pink-900 mb-2">Compliance Requirements</h3>
+            <p className="text-sm text-pink-800">{conversation_data.compliance_requirements || 'Not specified'}</p>
+          </div>
+
           <div className="bg-yellow-50 rounded-lg p-4">
             <h3 className="font-medium text-yellow-900 mb-2">Project Timeline</h3>
             <p className="text-sm text-yellow-800">{conversation_data.project_timeline || 'Not specified'}</p>
           </div>
-
-          <div className="bg-red-50 rounded-lg p-4">
-            <h3 className="font-medium text-red-900 mb-2">Urgency Level</h3>
-            <p className="text-sm text-red-800">{conversation_data.urgency_level || 'Not specified'}</p>
-          </div>
-
-          <div className="bg-indigo-50 rounded-lg p-4">
-            <h3 className="font-medium text-indigo-900 mb-2">Communication Style</h3>
-            <p className="text-sm text-indigo-800">{conversation_data.communication_style || 'Not specified'}</p>
-          </div>
         </div>
       </div>
 
+      {/* Project Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-indigo-50 rounded-lg p-4">
+          <h3 className="font-medium text-indigo-900 mb-2">Urgency Level</h3>
+          <p className="text-sm text-indigo-800">{conversation_data.urgency_level || 'Not specified'}</p>
+        </div>
+
+        <div className="bg-teal-50 rounded-lg p-4">
+          <h3 className="font-medium text-teal-900 mb-2">Team Size</h3>
+          <p className="text-sm text-teal-800">{conversation_data.team_size || 'Not specified'}</p>
+        </div>
+
+        <div className="bg-cyan-50 rounded-lg p-4">
+          <h3 className="font-medium text-cyan-900 mb-2">Communication Style</h3>
+          <p className="text-sm text-cyan-800">{conversation_data.communication_style || 'Not specified'}</p>
+        </div>
+      </div>
+
+      {/* Sales Notes */}
       {conversation_data.sales_notes && (
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="font-medium text-gray-900 mb-2 flex items-center">
@@ -588,6 +618,17 @@ const ConversationTab = ({ dealData }) => {
             Sales Notes
           </h3>
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{conversation_data.sales_notes}</p>
+        </div>
+      )}
+
+      {/* Follow-up Information */}
+      {conversation_data.follow_up_needed && (
+        <div className="bg-amber-50 rounded-lg p-4">
+          <h3 className="font-medium text-amber-900 mb-2 flex items-center">
+            <Clock className="h-4 w-4 mr-2" />
+            Follow-up Needed
+          </h3>
+          <p className="text-sm text-amber-800">{conversation_data.follow_up_needed}</p>
         </div>
       )}
     </div>
