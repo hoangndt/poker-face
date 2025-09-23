@@ -26,7 +26,7 @@ const CustomerList = () => {
       for (const customer of response.data.slice(0, 20)) { // Limit to first 20 for demo
         if (customer.Customer_Flag) {
           try {
-            const churnRes = await aiAPI.predictChurn(customer.Customer_ID || customer.id);
+            const churnRes = await aiAPI.predictChurn(customer.id);
             predictions[customer.id] = churnRes.data;
           } catch (error) {
             // Ignore individual prediction errors
@@ -141,7 +141,7 @@ const CustomerList = () => {
             return (
               <li key={customer.id}>
                 <Link
-                  to={`/customers/${customer.Customer_ID || customer.id}`}
+                  to={`/customers/${customer.id}`}
                   className="block hover:bg-gray-50 px-4 py-4 sm:px-6"
                 >
                   <div className="flex items-center justify-between">

@@ -48,7 +48,7 @@ class RevenueForecast(BaseModel):
     seasonality_factors: Dict[str, float]
 
 class ChurnPrediction(BaseModel):
-    customer_id: str
+    customer_id: int
     churn_probability: float
     risk_level: str  # Low, Medium, High
     risk_factors: List[str]
@@ -65,7 +65,7 @@ class LeadScoreUpdate(BaseModel):
     recent_activities: Optional[List[Dict[str, Any]]]
 
 class CustomerJourney(BaseModel):
-    customer_id: str
+    customer_id: int
     stages: List[Dict[str, Any]]
     total_journey_days: int
     current_stage: str

@@ -75,6 +75,23 @@ Our AI-powered platform provides:
    - Backend API: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
 
+4. **Train AI Models (Required for full functionality)**
+   ```bash
+   # Create sample data for training
+   curl -X POST http://localhost:8000/api/ai/create-sample-data
+   
+   # Train the AI models
+   curl -X POST http://localhost:8000/api/ai/train-models
+   
+   # Verify training status
+   curl http://localhost:8000/api/ai/model-status
+   ```
+
+5. **Test the system**
+   - Visit the dashboard at http://localhost:3000
+   - Try the Vietnam Dashboard: http://localhost:3000/vietnam-dashboard
+   - Test churn prediction: http://localhost:8000/api/ai/churn-prediction/CUST001
+
 ### Option 2: Manual Setup
 
 #### Backend Setup
@@ -90,6 +107,20 @@ uvicorn main:app --reload
 cd frontend
 npm install
 npm start
+```
+
+#### AI Model Training Setup
+```bash
+# After both backend and frontend are running:
+
+# 1. Create sample training data
+curl -X POST http://localhost:8000/api/ai/create-sample-data
+
+# 2. Train all AI models
+curl -X POST http://localhost:8000/api/ai/train-models
+
+# 3. Verify models are trained
+curl http://localhost:8000/api/ai/model-status
 ```
 
 ## 📊 Features & Demo
@@ -177,6 +208,19 @@ GET /api/ai/churn-risk-customers - High-risk customers
 GET /api/ai/revenue-forecast - Revenue predictions
 GET /api/ai/clv/{id} - Customer lifetime value
 POST /api/ai/lead-score - Calculate lead score
+
+# AI Model Training & Management
+GET /api/ai/model-status - Check training status of all models
+POST /api/ai/train-models - Train AI models with current data
+POST /api/ai/create-sample-data - Create sample data for development
+```
+
+#### Vietnam Market-Specific (Gradion Workflow)
+```
+GET /api/vietnam/data-quality-report - HubSpot data quality issues
+GET /api/vietnam/cs-intervention-queue - Customer Success queue
+POST /api/vietnam/gradion-lead-score - Gradion-specific lead scoring
+GET /api/vietnam/churn-prediction/{id} - Vietnamese market churn prediction
 ```
 
 #### Pipeline
@@ -203,6 +247,102 @@ GET /api/pipeline/forecast - Upcoming opportunities
   ],
   "prediction_confidence": 0.89
 }
+```
+
+## 🤖 AI Model Training & Management
+
+### Overview
+The system includes machine learning models that require training with customer data to provide accurate predictions. By default, models return "Model not trained" responses until properly trained.
+
+### Training Workflow
+
+#### Step 1: Check Model Status
+```bash
+GET /api/ai/model-status
+```
+**Response includes:**
+- Training status of each AI model
+- Data summary (total, churned, active customers)
+- Recommendations for next steps
+- Feature importance (if trained)
+
+#### Step 2: Create Sample Data (Development)
+If you need test data for development:
+```bash
+POST /api/ai/create-sample-data
+```
+**This endpoint:**
+- Creates 20 realistic sample customers
+- Includes both churned (20%) and active (80%) customers
+- Adds variety in tenure, NPS scores, usage patterns
+- Only creates data if you have fewer than 50 customers
+
+#### Step 3: Train the Models
+Once you have sufficient data:
+```bash
+POST /api/ai/train-models
+```
+**Requirements:**
+- Minimum 10 customers total
+- Must have both churned AND active customers
+- Trains churn prediction, revenue forecasting, and lead scoring models
+
+**Response includes:**
+- Training success confirmation
+- Model performance metrics
+- Customer data statistics
+- List of models trained
+
+### Model Training Requirements
+
+| Model | Min Customers | Special Requirements |
+|-------|---------------|---------------------|
+| Churn Prediction | 10 | Both churned & active customers |
+| Revenue Forecasting | 15 | Customers with ACV data |
+| Lead Scoring | 10 | Leads with conversion history |
+
+### Sample Training Response
+```json
+{
+  "message": "Models trained successfully",
+  "total_customers": 25,
+  "churned_customers": 5,
+  "active_customers": 20,
+  "models_trained": ["churn_predictor", "revenue_forecaster"],
+  "training_timestamp": "2025-09-23T10:30:00Z"
+}
+```
+
+### Production Training
+For production environments:
+1. **Use Real Data**: Import your actual customer data via CSV or API
+2. **Schedule Retraining**: Set up regular model retraining (weekly/monthly)
+3. **Monitor Performance**: Track prediction accuracy over time
+4. **A/B Testing**: Compare model versions for continuous improvement
+
+### Vietnamese Market Customization (Gradion Workflow)
+The system includes Vietnam-specific models optimized for Gradion's workflow:
+
+#### Lead Scoring Rules
+- **≤109 points**: Classified as MQL (Marketing Qualified Lead)
+- **≥110 points**: Classified as SQL (Sales Qualified Lead)
+- **"Book Consultant" override**: Immediate SQL classification regardless of score
+
+#### Cultural Considerations
+- Longer relationship-building cycles expected
+- NPS-based churn prediction with cultural interventions
+- Region-specific assignment (DACH vs APAC markets)
+
+#### Training Vietnam Models
+```bash
+# Check Vietnam-specific data quality
+GET /api/vietnam/data-quality-report
+
+# View intervention queue
+GET /api/vietnam/cs-intervention-queue
+
+# Test Gradion lead scoring
+POST /api/vietnam/gradion-lead-score
 ```
 
 ## 🔧 Configuration
@@ -249,7 +389,103 @@ npm install -g artillery
 artillery run tests/load-test.yml
 ```
 
-## 📈 Performance Metrics
+## � Troubleshooting
+
+### Common Issues & Solutions
+
+#### AI Model Issues
+
+**Issue: "Model not trained" responses**
+```json
+{
+  "churn_probability": 0.5,
+  "risk_level": "Unknown",
+  "risk_factors": ["Model not trained"]
+}
+```
+**Solution:**
+1. Check model status: `GET /api/ai/model-status`
+2. Create sample data: `POST /api/ai/create-sample-data`
+3. Train models: `POST /api/ai/train-models`
+
+**Issue: Training fails with "Need both churned and active customers"**
+**Solution:**
+- Ensure you have customers with `Churn_Flag = True` and `Churn_Flag = False`
+- Use sample data creation endpoint if needed
+- Minimum 10 customers with mixed churn status required
+
+**Issue: Vietnam endpoints return 404 errors**
+**Symptoms:**
+```
+GET /api/vietnam/data-quality-report → 404
+GET /api/vietnam/cs-intervention-queue → 404
+```
+**Solution:**
+- Check frontend API calls use `/vietnam/...` not `/api/vietnam/...`
+- Verify baseURL is set to `http://localhost:8000/api`
+
+#### Database Issues
+
+**Issue: "CustomerData object has no attribute 'company_name'"**
+**Solution:** This is a field mapping issue that's been fixed. Update to latest version.
+
+**Issue: Empty database or missing customers**
+**Solution:**
+```bash
+# Reinitialize database with sample data
+cd backend
+python init_db.py
+```
+
+#### Frontend Issues
+
+**Issue: "No routes matched location" errors**
+**Solution:** Route paths have been standardized:
+- `/churn-prediction` (not `/churn`)
+- `/revenue-forecasting` (not `/revenue`)
+- `/pipeline-health` (not `/pipeline`)
+
+**Issue: API connection failures**
+**Solution:**
+1. Verify backend is running on port 8000
+2. Check CORS configuration in backend
+3. Confirm frontend API base URL: `http://localhost:8000/api`
+
+#### Docker Issues
+
+**Issue: Port conflicts**
+**Solution:**
+```bash
+# Check what's using the ports
+lsof -i :3000  # Frontend
+lsof -i :8000  # Backend
+
+# Kill conflicting processes or change ports
+docker-compose down
+docker-compose up -d
+```
+
+### Getting Help
+
+1. **Check Logs:**
+   ```bash
+   # Backend logs
+   docker-compose logs backend
+   
+   # Frontend logs  
+   docker-compose logs frontend
+   ```
+
+2. **API Documentation:**
+   - Visit `http://localhost:8000/docs` for interactive API docs
+   - Test endpoints directly in the browser
+
+3. **Model Status:**
+   ```bash
+   curl http://localhost:8000/api/ai/model-status
+   ```
+
+## �📈 Performance Metrics
 
 - **API Response Time**: < 200ms average
 - **Dashboard Load Time**: < 2 seconds

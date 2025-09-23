@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 import pandas as pd
+from sqlalchemy.orm import Session
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import json
 
@@ -26,18 +28,15 @@ def get_customers(db: Session, skip: int = 0, limit: int = 100, stage: Optional[
     
     return query.offset(skip).limit(limit).all()
 
-def get_customer(db: Session, customer_id: str):
+def get_customer(db: Session, customer_id: int):
     """Get a specific customer by ID"""
-    return db.query(CustomerData).filter(
-        (CustomerData.Customer_ID == customer_id) | 
-        (CustomerData.id == customer_id)
-    ).first()
+    return db.query(CustomerData).filter(CustomerData.id == customer_id).first()
 
 def get_all_customers(db: Session):
     """Get all customers for model training"""
     return db.query(CustomerData).all()
 
-def update_customer_stage(db: Session, customer_id: str, new_stage: str):
+def update_customer_stage(db: Session, customer_id: int, new_stage: str):
     """Update customer lifecycle stage"""
     customer = get_customer(db, customer_id)
     if not customer:
@@ -179,7 +178,7 @@ def get_revenue_metrics(db: Session, start_date: Optional[datetime] = None, end_
         expansion_revenue=expansion_revenue
     )
 
-def get_customer_journey(db: Session, customer_id: str):
+def get_customer_journey(db: Session, customer_id: int):
     """Get complete customer journey"""
     customer = get_customer(db, customer_id)
     if not customer:
@@ -298,7 +297,7 @@ def get_pipeline_forecast(db: Session):
     for customer in upcoming_closes:
         if customer.Expected_Close_Date and customer.Forecasted_Revenue:
             forecast_data.append({
-                "customer_id": customer.Customer_ID or str(customer.id),
+                "customer_id": customer.id,
                 "customer_name": f"{customer.first_name} {customer.last_name}",
                 "expected_close_date": customer.Expected_Close_Date.isoformat(),
                 "forecasted_revenue": customer.Forecasted_Revenue,
@@ -315,10 +314,10 @@ def get_pipeline_forecast(db: Session):
         "opportunities": forecast_data
     }
 
-def log_customer_activity(db: Session, customer_id: str, activity_type: str, activity_data: dict):
+def log_customer_activity(db: Session, customer_id: int, activity_type: str, activity_data: dict):
     """Log customer activity for real-time tracking"""
     activity = CustomerActivity(
-        customer_id=customer_id,
+        customer_id=str(customer_id),
         activity_type=activity_type,
         activity_data=json.dumps(activity_data),
         timestamp=datetime.utcnow()
@@ -328,10 +327,10 @@ def log_customer_activity(db: Session, customer_id: str, activity_type: str, act
     db.commit()
     return True
 
-def update_churn_prediction(db: Session, customer_id: str, prediction):
+def update_churn_prediction(db: Session, customer_id: int, prediction):
     """Update churn prediction for a customer"""
     churn_pred = ChurnPredictions(
-        customer_id=customer_id,
+        customer_id=str(customer_id),
         churn_probability=prediction.churn_probability,
         risk_factors=json.dumps(prediction.risk_factors),
         prediction_date=datetime.utcnow(),
@@ -413,3 +412,61 @@ def export_data(db: Session, format: str):
             ],
             "export_date": datetime.utcnow().isoformat()
         }
+
+def get_high_risk_customers(db: Session, risk_threshold: float = 0.7):
+    """Get customers with high churn risk based on various factors"""
+    # For now, we'll use simple heuristics since we don't have a trained ML model
+    # In a real implementation, you'd use a proper churn prediction model
+    
+    # Get customers who are active but showing risk signals
+    risky_customers = db.query(CustomerData).filter(
+        CustomerData.Customer_Flag == True,
+        CustomerData.Churn_Flag == False
+    ).all()
+    
+    high_risk_list = []
+    for customer in risky_customers:
+        risk_score = 0.0
+        risk_factors = []
+        
+        # Low ACV customers are at higher risk
+        if customer.ACV_USD and customer.ACV_USD < 1000:
+            risk_score += 0.3
+            risk_factors.append("Low ACV")
+        
+        # Old customers without recent activity
+        if customer.MQL_Date:
+            days_since_mql = (datetime.utcnow() - customer.MQL_Date).days
+            if days_since_mql > 365:
+                risk_score += 0.4
+                risk_factors.append("Long time since MQL")
+        
+        # Missing important fields indicate lack of engagement
+        missing_fields = 0
+        if not customer.Industry:
+            missing_fields += 1
+        if not customer.Decision_Maker_Role:
+            missing_fields += 1
+        if not customer.Region:
+            missing_fields += 1
+            
+        if missing_fields > 1:
+            risk_score += 0.3
+            risk_factors.append("Incomplete profile")
+        
+        if risk_score >= risk_threshold:
+            high_risk_list.append({
+                "id": customer.id,
+                "name": f"{customer.first_name or ''} {customer.last_name or ''}".strip(),
+                "email": customer.email,
+                "company": customer.Industry,
+                "risk_score": round(risk_score, 2),
+                "risk_factors": risk_factors,
+                "acv": customer.ACV_USD,
+                "customer_since": customer.Conversion_Date.isoformat() if customer.Conversion_Date else None
+            })
+    
+    # Sort by risk score descending
+    high_risk_list.sort(key=lambda x: x["risk_score"], reverse=True)
+    
+    return high_risk_list
