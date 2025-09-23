@@ -64,7 +64,7 @@ export const sprintAPI = {
   // AI Insights
   triggerAIInsight: (dealId, currentStatus) => api.post(`/sprint/ai/insight/${dealId}`, { current_status: currentStatus }),
   getAIInsights: (dealId) => api.get(`/sprint/ai/insights/${dealId}`),
-  
+
   // AI Actions for different stages
   triggerAIQualification: (dealId) => api.post(`/sprint/ai/qualification/${dealId}`),
   triggerAISolution: (dealId) => api.post(`/sprint/ai/solution/${dealId}`),
@@ -73,6 +73,7 @@ export const sprintAPI = {
   
   // Dashboard
   getDashboard: () => api.get('/sprint/dashboard'),
+  getDashboardAnalytics: () => api.get('/sprint/dashboard/analytics'),
 };
 
 // Pipeline API calls
