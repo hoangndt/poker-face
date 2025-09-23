@@ -100,7 +100,7 @@ class ChurnPredictions(Base):
     prediction_date = Column(DateTime, default=datetime.utcnow)
     model_version = Column(String)
 
-class RevenueMetrics(Base):
+class RevenueForecastData(Base):
     __tablename__ = "revenue_forecasts"
     
     id = Column(Integer, primary_key=True, index=True)

@@ -9,10 +9,11 @@ from datetime import datetime, timedelta
 import uvicorn
 
 from database import get_db, engine
-from models import CustomerData, LifecycleStage, RevenueMetrics
+from models import CustomerData, LifecycleStage, CustomerActivity, ChurnPredictions, RevenueForecastData
 from schemas import (
     CustomerResponse, 
-    LifecycleAnalytics, 
+    LifecycleAnalytics,
+    RevenueMetrics, 
     RevenueForecast, 
     ChurnPrediction,
     LeadScoreUpdate,
