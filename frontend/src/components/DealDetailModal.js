@@ -293,7 +293,7 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate, comments, newCommen
   return (
     <div className="grid grid-cols-1 gap-6">
       {/* Basic Information */}
-      <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="font-medium text-gray-900 mb-3 flex items-center">
             <Building className="h-4 w-4 mr-2" />
@@ -410,14 +410,12 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate, comments, newCommen
             <div className="flex justify-between">
               <span className="text-gray-600">Deal Probability:</span>
               <span className="font-medium flex items-center">
-                <Percent className="h-3 w-3 mr-1" />
                 {deal.deal_probability ? `${deal.deal_probability}%` : 'Not specified'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Weighted Amount:</span>
               <span className="font-medium flex items-center">
-                <Euro className="h-3 w-3 mr-1" />
                 {deal.weighted_amount ? `€${deal.weighted_amount.toLocaleString()}` : 'Not calculated'}
               </span>
             </div>

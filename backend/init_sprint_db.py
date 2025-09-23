@@ -308,6 +308,42 @@ def create_dummy_deals(db: Session, persons: list):
             expected_close_date = datetime.now() + timedelta(days=random.randint(15, 120))
             actual_close_date = None
 
+        # Generate contract completion tracking data for closed deals
+        contract_signed_date = None
+        finance_contacted_date = None
+        email_reminder_sent = False
+        last_reminder_date = None
+
+        if status == 'deal' and actual_close_date:
+            # Create various scenarios for contract completion tracking
+            days_since_close = (datetime.now() - actual_close_date).days
+
+            # Scenario 1: Both tasks completed within 30 days (40% of deals)
+            if random.random() < 0.4:
+                contract_signed_date = actual_close_date + timedelta(days=random.randint(1, 25))
+                finance_contacted_date = actual_close_date + timedelta(days=random.randint(1, 28))
+
+            # Scenario 2: One task missing and overdue (30% of deals)
+            elif random.random() < 0.7 and days_since_close > 30:
+                if random.random() < 0.5:
+                    # Contract signed but finance not contacted
+                    contract_signed_date = actual_close_date + timedelta(days=random.randint(1, 25))
+                else:
+                    # Finance contacted but contract not signed
+                    finance_contacted_date = actual_close_date + timedelta(days=random.randint(1, 28))
+
+                # Set reminder email sent for overdue deals
+                email_reminder_sent = True
+                last_reminder_date = datetime.now() - timedelta(days=random.randint(1, 7))
+
+            # Scenario 3: Both tasks missing and overdue (20% of deals)
+            elif days_since_close > 30:
+                email_reminder_sent = True
+                last_reminder_date = datetime.now() - timedelta(days=random.randint(1, 7))
+
+            # Scenario 4: Approaching deadline but not overdue (10% of deals)
+            # Leave both tasks incomplete for recent deals
+
         # Create unique title if it's a duplicate
         title = template['title']
         if i > 0:
@@ -336,7 +372,12 @@ def create_dummy_deals(db: Session, persons: list):
             'deal_stage': deal_stage,
             'deal_probability': deal_probability,
             'weighted_amount': weighted_amount,
-            'board_position': i % 10  # Distribute across board positions
+            'board_position': i % 10,  # Distribute across board positions
+            # Contract completion tracking
+            'contract_signed_date': contract_signed_date,
+            'finance_contacted_date': finance_contacted_date,
+            'email_reminder_sent': email_reminder_sent,
+            'last_reminder_date': last_reminder_date
         }
 
         deal = Deal(**deal_data)

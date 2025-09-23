@@ -208,21 +208,7 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(deal.priority)}`}>
                 {deal.priority}
               </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  triggerAIInsight();
-                }}
-                disabled={isLoadingInsight}
-                className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-                title={isLoadingInsight ? "Analyzing..." : "Trigger AI Analysis"}
-              >
-                <Brain className={`h-4 w-4 ${
-                  isLoadingInsight ? 'text-blue-600 animate-pulse' : 
-                  showAIInsights ? 'text-blue-600' : 'text-gray-400'
-                }`} />
-              </button>
-              
+
               <div className="relative">
                 <button
                   onClick={(e) => {
@@ -234,7 +220,7 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
                 >
                   <MoreHorizontal className="h-4 w-4 text-gray-400" />
                 </button>
-                
+
                 {showStatusMenu && (
                   <div className="absolute right-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-40">
                     <div className="py-1">
@@ -269,6 +255,14 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
               </div>
             </div>
           </div>
+
+          {/* Click outside to close menu */}
+          {showStatusMenu && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowStatusMenu(false)}
+            />
+          )}
 
           {/* Click outside to close menu */}
           {showStatusMenu && (
@@ -330,23 +324,102 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
             </div>
           )}
 
-          {/* Footer */}
-          <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
-            <span className="text-xs text-gray-500">
-              ID: {deal.id}
-            </span>
-            <div className="flex items-center space-x-1">
-              {deal.status === 'lead' && (
-                <AlertCircle className="h-4 w-4 text-orange-500" title="Needs qualification" />
-              )}
-              {isLoadingInsight && (
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" title="AI analysis in progress" />
-              )}
-              {showAIInsights && aiInsightData && (
-                <CheckCircle className="h-4 w-4 text-green-500" title="AI analysis complete" />
+          {/* Contract Completion Tracking for Closed Deals */}
+          {deal.status === 'deal' && deal.contract_completion_status && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              {deal.contract_completion_status.is_applicable && (
+                <div className="space-y-2">
+                  {/* Warning for overdue tasks */}
+                  {deal.contract_completion_status.is_overdue && deal.contract_completion_status.missing_tasks.length > 0 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start space-x-2">
+                        <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-red-800">
+                            Contract completion overdue
+                          </p>
+                          <p className="text-xs text-red-700 mt-1">
+                            Missing: {deal.contract_completion_status.missing_tasks.join(', ')}
+                          </p>
+                          {deal.contract_completion_status.needs_reminder && (
+                            <p className="text-xs text-red-600 mt-1 font-medium">
+                              📧 Reminder email sent
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status for completed tasks */}
+                  {deal.contract_completion_status.all_tasks_completed && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <p className="text-xs font-medium text-green-800">
+                          All contract tasks completed ✓
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status for approaching deadline */}
+                  {!deal.contract_completion_status.is_overdue &&
+                   !deal.contract_completion_status.all_tasks_completed &&
+                   deal.contract_completion_status.missing_tasks.length > 0 && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start space-x-2">
+                        <Clock className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-yellow-800">
+                            Pending: {deal.contract_completion_status.missing_tasks.join(', ')}
+                          </p>
+                          <p className="text-xs text-yellow-700 mt-1">
+                            {30 - deal.contract_completion_status.days_since_close} days remaining
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          </div>
+          )}
+
+          {/* AI Analysis Button */}
+          {deal.status !== 'deal' && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerAIInsight();
+                }}
+                disabled={isLoadingInsight}
+                className="w-full flex items-center justify-center px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isLoadingInsight ? "Analyzing..." : "Trigger AI Analysis"}
+              >
+                <Brain className={`h-4 w-4 mr-2 ${
+                  isLoadingInsight ? 'animate-pulse' : ''
+                }`} />
+                <span className="text-sm font-medium">
+                  {isLoadingInsight ? 'Analyzing...' : 'AI Analysis'}
+                </span>
+              </button>
+
+              {/* Status Indicators */}
+              <div className="flex items-center justify-center space-x-2 pt-2">
+                {deal.status === 'lead' && (
+                  <AlertCircle className="h-4 w-4 text-orange-500" title="Needs qualification" />
+                )}
+                {isLoadingInsight && (
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" title="AI analysis in progress" />
+                )}
+                {showAIInsights && aiInsightData && (
+                  <CheckCircle className="h-4 w-4 text-green-500" title="AI analysis complete" />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Draggable>
@@ -355,6 +428,30 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
 
 const SprintColumn = ({ column, deals, onAddDeal, onDealClick, onStatusChange }) => {
   const IconComponent = column.icon;
+
+  // Calculate total budget for this column
+  const calculateColumnBudget = () => {
+    return deals.reduce((total, deal) => {
+      // Use estimated_value if available, otherwise use the average of budget range
+      const dealValue = deal.estimated_value ||
+        (deal.budget_range_min && deal.budget_range_max
+          ? (deal.budget_range_min + deal.budget_range_max) / 2
+          : deal.budget_range_min || 0);
+      return total + (dealValue || 0);
+    }, 0);
+  };
+
+  const formatBudget = (amount) => {
+    if (amount === 0) return '$0';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const totalBudget = calculateColumnBudget();
 
   return (
     <div className={`${column.color} rounded-lg p-4 min-h-screen w-80 flex-shrink-0`}>
@@ -367,15 +464,23 @@ const SprintColumn = ({ column, deals, onAddDeal, onDealClick, onStatusChange })
             {deals.length}
           </span>
         </div>
-        {column.id === 'lead' && (
-          <button
-            onClick={() => onAddDeal(column.id)}
-            className="p-1 hover:bg-white/50 rounded transition-colors"
-            title="Add new lead"
-          >
-            <Plus className="h-4 w-4 text-gray-700" />
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {/* Show total budget only for Deal column (closed deals) */}
+          {column.id === 'deal' && (
+              <span className="ml-2 bg-blue-100 px-2 py-1 rounded-full text-xs font-medium text-blue-800">
+              {formatBudget(totalBudget)}
+            </span>
+          )}
+          {column.id === 'lead' && (
+            <button
+              onClick={() => onAddDeal(column.id)}
+              className="p-1 hover:bg-white/50 rounded transition-colors"
+              title="Add new lead"
+            >
+              <Plus className="h-4 w-4 text-gray-700" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Column Description */}

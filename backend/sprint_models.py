@@ -88,6 +88,12 @@ class Deal(Base):
     expected_close_date = Column(DateTime)
     actual_close_date = Column(DateTime)
 
+    # Contract Completion Tracking (for closed deals)
+    contract_signed_date = Column(DateTime)  # When contract was signed
+    finance_contacted_date = Column(DateTime)  # When finance team was contacted
+    email_reminder_sent = Column(Boolean, default=False)  # Whether reminder email was sent
+    last_reminder_date = Column(DateTime)  # When last reminder was sent
+
     # Sprint Board Position
     board_position = Column(Integer, default=0)  # For ordering within status column
     

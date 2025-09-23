@@ -89,6 +89,16 @@ class DealUpdate(BaseModel):
     expected_close_date: Optional[datetime] = None
     board_position: Optional[int] = None
 
+# Contract Completion Status
+class ContractCompletionStatus(BaseModel):
+    is_applicable: bool
+    is_overdue: bool
+    missing_tasks: List[str]
+    days_since_close: int
+    deadline_date: Optional[datetime]
+    needs_reminder: bool
+    all_tasks_completed: bool
+
 class DealResponse(DealBase):
     id: int
     customer_id: Optional[int] = None
@@ -100,6 +110,15 @@ class DealResponse(DealBase):
     actual_close_date: Optional[datetime] = None
     assigned_person: Optional[PersonResponse] = None
     solution_owner: Optional[PersonResponse] = None
+
+    # Contract completion tracking
+    contract_signed_date: Optional[datetime] = None
+    finance_contacted_date: Optional[datetime] = None
+    email_reminder_sent: Optional[bool] = None
+    last_reminder_date: Optional[datetime] = None
+
+    # Contract completion status (computed field)
+    contract_completion_status: Optional[ContractCompletionStatus] = None
 
     class Config:
         from_attributes = True
