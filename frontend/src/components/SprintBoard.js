@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { 
-  Users, 
-  Clock, 
-  DollarSign, 
-  AlertCircle, 
-  Plus, 
+import {
+  Users,
+  Clock,
+  DollarSign,
+  AlertCircle,
+  Plus,
   MoreHorizontal,
   User,
   Calendar,
@@ -19,6 +19,7 @@ import { sprintAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import DealDetailModal from './DealDetailModal';
 import AIInsightPanel from './AIInsightPanel';
+import AssigneeFilter from './AssigneeFilter';
 
 const SPRINT_COLUMNS = [
   {
@@ -68,6 +69,25 @@ const SPRINT_COLUMNS = [
     borderColor: 'border-emerald-300',
     icon: TrendingUp,
     description: 'Active projects'
+  }
+];
+
+const COLUMN_GROUPS = [
+  {
+    id: 'individual_lead',
+    title: null,
+    columns: ['lead']
+  },
+  {
+    id: 'qualified_lead',
+    title: 'Qualified Lead',
+    description: 'Technical solution, delivery planning, and final review',
+    columns: ['qualified_solution', 'qualified_delivery', 'qualified_cso']
+  },
+  {
+    id: 'individual_deal_project',
+    title: null,
+    columns: ['deal', 'project']
   }
 ];
 
@@ -335,7 +355,7 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
 
 const SprintColumn = ({ column, deals, onAddDeal, onDealClick, onStatusChange }) => {
   const IconComponent = column.icon;
-  
+
   return (
     <div className={`${column.color} rounded-lg p-4 min-h-screen w-80 flex-shrink-0`}>
       {/* Column Header */}
@@ -372,16 +392,16 @@ const SprintColumn = ({ column, deals, onAddDeal, onDealClick, onStatusChange })
             }`}
           >
             {deals.map((deal, index) => (
-              <DealCard 
-                key={deal.id} 
-                deal={deal} 
-                index={index} 
-                onDealClick={onDealClick} 
+              <DealCard
+                key={deal.id}
+                deal={deal}
+                index={index}
+                onDealClick={onDealClick}
                 onStatusChange={onStatusChange}
               />
             ))}
             {provided.placeholder}
-            
+
             {/* Empty State */}
             {deals.length === 0 && !snapshot.isDraggingOver && (
               <div className="text-center py-8 text-gray-500">
@@ -396,16 +416,133 @@ const SprintColumn = ({ column, deals, onAddDeal, onDealClick, onStatusChange })
   );
 };
 
+const ColumnGroup = ({ group, boardData, onAddDeal, onDealClick, onStatusChange }) => {
+  const groupColumns = group.columns.map(columnId =>
+    SPRINT_COLUMNS.find(col => col.id === columnId)
+  ).filter(Boolean);
+
+  const getTotalDealsInGroup = () => {
+    return group.columns.reduce((total, columnId) => {
+      const columnData = boardData.columns.find(col => col.status === columnId);
+      return total + (columnData?.deals.length || 0);
+    }, 0);
+  };
+
+  if (!group.title) {
+    // Render individual columns without grouping
+    return (
+      <>
+        {groupColumns.map(column => {
+          const columnData = boardData.columns.find(col => col.status === column.id) || { deals: [] };
+          return (
+            <SprintColumn
+              key={column.id}
+              column={column}
+              deals={columnData.deals}
+              onAddDeal={onAddDeal}
+              onDealClick={onDealClick}
+              onStatusChange={onStatusChange}
+            />
+          );
+        })}
+      </>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* Group Header - positioned above but not affecting column alignment */}
+      <div className="absolute -top-10 left-0 right-0 z-10 ">
+        <div className="bg-white/90 backdrop-blur-sm bg-blue-300 rounded-t-lg border border-b-0 border-gray-200 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-white">{group.title}</h2>
+            </div>
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+              {getTotalDealsInGroup()} deals
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Grouped Columns Container - subtle background */}
+      <div className="bg-blue-300 backdrop-blur-sm rounded-b-xl border border-gray-200/50 p-4 pt-0">
+        <div className="flex space-x-6">
+          {groupColumns.map(column => {
+            const columnData = boardData.columns.find(col => col.status === column.id) || { deals: [] };
+            return (
+              <SprintColumn
+                key={column.id}
+                column={column}
+                deals={columnData.deals}
+                onAddDeal={onAddDeal}
+                onDealClick={onDealClick}
+                onStatusChange={onStatusChange}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SprintBoard = () => {
   const [boardData, setBoardData] = useState({ columns: [] });
   const [loading, setLoading] = useState(true);
   const [showNewDealModal, setShowNewDealModal] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState(null);
   const [showDealDetail, setShowDealDetail] = useState(false);
+  const [allAssignees, setAllAssignees] = useState([]);
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
 
   useEffect(() => {
     fetchBoardData();
   }, []);
+
+  // Extract unique assignees from all deals
+  useEffect(() => {
+    if (boardData.columns) {
+      const assigneesSet = new Set();
+      const assigneesList = [];
+
+      boardData.columns.forEach(column => {
+        column.deals?.forEach(deal => {
+          if (deal.assigned_person && !assigneesSet.has(deal.assigned_person.id)) {
+            assigneesSet.add(deal.assigned_person.id);
+            assigneesList.push({
+              id: deal.assigned_person.id,
+              name: deal.assigned_person.name,
+              email: deal.assigned_person.email,
+              role: deal.assigned_person.role
+            });
+          }
+        });
+      });
+
+      setAllAssignees(assigneesList);
+    }
+  }, [boardData]);
+
+  // Filter deals based on selected assignees
+  const getFilteredBoardData = () => {
+    if (selectedAssignees.length === 0) {
+      return boardData;
+    }
+
+    const selectedAssigneeIds = selectedAssignees.map(assignee => assignee.id);
+    const filteredBoardData = {
+      ...boardData,
+      columns: boardData.columns.map(column => ({
+        ...column,
+        deals: column.deals.filter(deal =>
+          deal.assigned_person && selectedAssigneeIds.includes(deal.assigned_person.id)
+        )
+      }))
+    };
+
+    return filteredBoardData;
+  };
 
   const fetchBoardData = async () => {
     try {
@@ -521,7 +658,7 @@ const SprintBoard = () => {
   return (
     <div className="h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 p-6">
+      <div className="p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Sale pipeline</h1>
@@ -536,7 +673,8 @@ const SprintBoard = () => {
             <div className="text-sm text-gray-600">
               Active Deals: <span className="font-semibold">{boardData.total_deals || 0}</span>
             </div>
-            <button 
+            
+            <button
               onClick={() => setShowNewDealModal(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
             >
@@ -547,23 +685,28 @@ const SprintBoard = () => {
         </div>
       </div>
 
+        <div className="p-6">
+            <AssigneeFilter
+                assignees={allAssignees}
+                selectedAssignees={selectedAssignees}
+                onSelectionChange={setSelectedAssignees}
+            />
+        </div>
+
       {/* Sprint Board */}
       <div className="overflow-x-auto h-full">
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex space-x-6 p-6 min-w-max">
-            {SPRINT_COLUMNS.map(column => {
-              const columnData = boardData.columns.find(col => col.status === column.id) || { deals: [] };
-              return (
-                <SprintColumn
-                  key={column.id}
-                  column={column}
-                  deals={columnData.deals}
-                  onAddDeal={handleAddDeal}
-                  onDealClick={handleDealClick}
-                  onStatusChange={handleManualStatusChange}
-                />
-              );
-            })}
+          <div className="flex space-x-8 p-6 pt-20 min-w-max">
+            {COLUMN_GROUPS.map(group => (
+              <ColumnGroup
+                key={group.id}
+                group={group}
+                boardData={getFilteredBoardData()}
+                onAddDeal={handleAddDeal}
+                onDealClick={handleDealClick}
+                onStatusChange={handleManualStatusChange}
+              />
+            ))}
           </div>
         </DragDropContext>
       </div>
