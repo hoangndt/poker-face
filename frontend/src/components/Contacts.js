@@ -46,6 +46,9 @@ const Contacts = () => {
   const [sortField, setSortField] = useState('full_name');
   const [sortDirection, setSortDirection] = useState('asc');
   const [summary, setSummary] = useState(null);
+  const [editingNote, setEditingNote] = useState(null);
+  const [noteValues, setNoteValues] = useState({});
+  const [savingNote, setSavingNote] = useState(null);
 
   useEffect(() => {
     fetchContacts();
@@ -72,6 +75,40 @@ const Contacts = () => {
     } catch (error) {
       console.error('Error fetching summary:', error);
     }
+  };
+
+  const handleNoteEdit = (contactId, currentNote) => {
+    setEditingNote(contactId);
+    setNoteValues({ ...noteValues, [contactId]: currentNote || '' });
+  };
+
+  const handleNoteSave = async (contactId) => {
+    try {
+      setSavingNote(contactId);
+      const noteValue = noteValues[contactId]?.trim() || '';
+      await sprintAPI.updateContact(contactId, { note: noteValue });
+
+      // Update local state
+      setContacts(contacts.map(contact =>
+        contact.id === contactId
+          ? { ...contact, note: noteValue }
+          : contact
+      ));
+
+      setEditingNote(null);
+      setNoteValues({ ...noteValues, [contactId]: '' });
+      toast.success('Note updated successfully');
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast.error('Failed to update note');
+    } finally {
+      setSavingNote(null);
+    }
+  };
+
+  const handleNoteCancel = (contactId) => {
+    setEditingNote(null);
+    setNoteValues({ ...noteValues, [contactId]: '' });
   };
 
   const filteredAndSortedContacts = useMemo(() => {
@@ -269,7 +306,7 @@ const Contacts = () => {
       {/* Contacts Table */}
       <div className="bg-white shadow border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50">
               <tr>
                 <SortableHeader field="full_name">Full Name</SortableHeader>
@@ -282,6 +319,9 @@ const Contacts = () => {
                 <SortableHeader field="status">Status</SortableHeader>
                 <SortableHeader field="estimated_revenue">Est Revenue</SortableHeader>
                 <SortableHeader field="estimated_close_date">Est Close Date</SortableHeader>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Notes
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Team
                 </th>
@@ -302,7 +342,6 @@ const Contacts = () => {
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{contact.full_name}</div>
-                        <div className="text-sm text-gray-500">{contact.note ? contact.note.substring(0, 50) + '...' : ''}</div>
                       </div>
                     </div>
                   </td>
@@ -341,6 +380,53 @@ const Contacts = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(contact.estimated_close_date)}
+                  </td>
+                  <td className="px-4 py-4 text-sm text-gray-900" style={{ maxWidth: '300px', minWidth: '200px' }}>
+                    {editingNote === contact.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={noteValues[contact.id] || ''}
+                          onChange={(e) => setNoteValues({ ...noteValues, [contact.id]: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.ctrlKey) {
+                              handleNoteSave(contact.id);
+                            } else if (e.key === 'Escape') {
+                              handleNoteCancel(contact.id);
+                            }
+                          }}
+                          className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          rows="3"
+                          placeholder="Add a note... (Ctrl+Enter to save, Esc to cancel)"
+                          autoFocus
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleNoteSave(contact.id)}
+                            disabled={savingNote === contact.id}
+                            className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {savingNote === contact.id ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => handleNoteCancel(contact.id)}
+                            className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer hover:bg-gray-50 p-2 rounded min-h-[2rem] border border-transparent hover:border-gray-200"
+                        onClick={() => handleNoteEdit(contact.id, contact.note)}
+                      >
+                        {contact.note ? (
+                          <span className="text-gray-900">{contact.note}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">Click to add note...</span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="space-y-1">

@@ -599,7 +599,7 @@ const ColumnGroup = ({ group, boardData, onAddDeal, onDealClick, onStatusChange 
     <div className="relative">
       {/* Group Header - positioned above but not affecting column alignment */}
       <div className="absolute -top-10 left-0 right-0 z-10 ">
-        <div className="bg-white/90 backdrop-blur-sm bg-blue-300 rounded-t-lg border border-b-0 border-gray-200 px-4 py-2">
+        <div className="bg-blue-300 rounded-t-lg border border-b-0 border-gray-200 px-4 py-2">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-white">{group.title}</h2>
