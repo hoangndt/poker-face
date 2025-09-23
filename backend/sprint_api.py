@@ -536,7 +536,7 @@ def _trigger_ai_insight_for_status(deal_id: int, status: DealStatus, db: Session
         insight_type=f"{status.value}_analysis",
         title=f"AI Analysis for {status.value.replace('_', ' ').title()}",
         description=f"Automatic AI analysis triggered for status change to {status.value}",
-        triggered_by_status=status,
+        triggered_by_status=normalize_status(status),
         ai_model_version="v1.0"
     )
     
@@ -790,7 +790,7 @@ async def _trigger_delivery_planning(deal_id: int, db: Session) -> dict:
         description=f"Delivery Score: {analysis['delivery_score']:.1f}% - {analysis['delivery_approach']}",
         recommendations=json.dumps(analysis['recommendations']),
         confidence_score=analysis['confidence'],
-        triggered_by_status=DealStatus.QUALIFIED_DELIVERY,
+        triggered_by_status=normalize_status(DealStatus.QUALIFIED_DELIVERY),
         relevant_data_points=json.dumps(analysis['risk_mitigation']),
         suggested_actions=json.dumps(analysis['quality_assurance']),
         ai_model_version="delivery_planning_v1.0"
@@ -911,7 +911,7 @@ async def _trigger_proposal_generation(deal_id: int, db: Session) -> dict:
         description=f"Proposal Score: {analysis['proposal_score']:.1f}% - {analysis['pricing_model']}",
         recommendations=json.dumps(analysis['recommendations']),
         confidence_score=analysis['confidence'],
-        triggered_by_status=DealStatus.QUALIFIED_CSO,
+        triggered_by_status=normalize_status(DealStatus.QUALIFIED_CSO),
         relevant_data_points=json.dumps(analysis['negotiation_strategy']),
         suggested_actions=json.dumps(analysis['success_metrics']),
         ai_model_version="proposal_generation_v1.0"

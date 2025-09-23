@@ -47,6 +47,41 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
     }
   };
 
+  const triggerAIInsight = async () => {
+    if (!dealData?.deal) return;
+    
+    try {
+      setLoading(true);
+      const analysisMessage = getAnalysisMessage(dealData.deal.status);
+      toast.loading(analysisMessage, { id: 'ai-analysis' });
+      
+      await sprintAPI.triggerAIInsight(dealData.deal.id, dealData.deal.status);
+      
+      // Refresh deal details to get the latest AI insights
+      await fetchDealDetails();
+      
+      toast.success('AI analysis completed', { id: 'ai-analysis' });
+      
+      // Switch to AI insights tab to show results
+      setActiveTab('ai-insights');
+    } catch (error) {
+      console.error('Error triggering AI insight:', error);
+      toast.error('Failed to generate AI insights', { id: 'ai-analysis' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAnalysisMessage = (status) => {
+    switch (status) {
+      case 'lead': return 'Analyzing lead qualification...';
+      case 'qualified_solution': return 'Designing technical solution...';
+      case 'qualified_delivery': return 'Planning delivery strategy...';
+      case 'qualified_cso': return 'Generating commercial proposal...';
+      default: return 'Running AI analysis...';
+    }
+  };
+
   const formatCurrency = (amount) => {
     if (!amount) return 'Not specified';
     return new Intl.NumberFormat('en-US', {
@@ -94,6 +129,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
     { id: 'overview', label: 'Overview', icon: Circle },
     { id: 'conversation', label: 'Conversation', icon: MessageSquare },
     { id: 'technical', label: 'Technical', icon: Settings },
+    { id: 'ai-insights', label: 'AI Insights', icon: Brain },
     { id: 'timeline', label: 'Timeline', icon: Activity },
     { id: 'resources', label: 'Resources', icon: User },
   ];
@@ -166,6 +202,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
               {activeTab === 'overview' && <OverviewTab dealData={dealData} formatCurrency={formatCurrency} formatDate={formatDate} />}
               {activeTab === 'conversation' && <ConversationTab dealData={dealData} />}
               {activeTab === 'technical' && <TechnicalTab dealData={dealData} />}
+              {activeTab === 'ai-insights' && <AIInsightsTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
               {activeTab === 'timeline' && <TimelineTab dealData={dealData} />}
               {activeTab === 'resources' && <ResourcesTab dealData={dealData} />}
             </div>
@@ -508,6 +545,133 @@ const ResourcesTab = ({ dealData }) => {
         <div className="bg-yellow-50 rounded-lg p-4">
           <h3 className="font-medium text-yellow-900 mb-2">Proposal</h3>
           <p className="text-sm text-yellow-800">{proposal.proposal_summary}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// AI Insights Tab Component
+const AIInsightsTab = ({ dealData, triggerAIInsight, loading }) => {
+  const { ai_insights, deal } = dealData;
+
+  const getInsightTypeColor = (type) => {
+    const colors = {
+      lead_qualification: 'bg-blue-100 text-blue-800',
+      solution_design: 'bg-green-100 text-green-800',
+      delivery_planning: 'bg-purple-100 text-purple-800',
+      proposal_generation: 'bg-orange-100 text-orange-800'
+    };
+    return colors[type] || 'bg-gray-100 text-gray-800';
+  };
+
+  const formatInsightData = (insight) => {
+    try {
+      return {
+        recommendations: insight.recommendations ? JSON.parse(insight.recommendations) : [],
+        relevant_data_points: insight.relevant_data_points ? JSON.parse(insight.relevant_data_points) : [],
+        suggested_actions: insight.suggested_actions ? JSON.parse(insight.suggested_actions) : []
+      };
+    } catch (e) {
+      return { recommendations: [], relevant_data_points: [], suggested_actions: [] };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Trigger AI Analysis Button */}
+      <div className="border-b pb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">AI Insights</h3>
+            <p className="text-sm text-gray-500">AI-powered analysis for deal progression</p>
+          </div>
+          <button
+            onClick={triggerAIInsight}
+            disabled={loading}
+            className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <Brain className="h-4 w-4" />
+            {loading ? 'Analyzing...' : 'Generate AI Analysis'}
+          </button>
+        </div>
+      </div>
+
+      {/* AI Insights List */}
+      {ai_insights && ai_insights.length > 0 ? (
+        <div className="space-y-4">
+          {ai_insights.map((insight, index) => {
+            const formattedData = formatInsightData(insight);
+            return (
+              <div key={index} className="border rounded-lg p-4 bg-white">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getInsightTypeColor(insight.insight_type)}`}>
+                        {insight.insight_type.replace('_', ' ').toUpperCase()}
+                      </span>
+                      {insight.confidence_score && (
+                        <span className="text-xs text-gray-500">
+                          Confidence: {insight.confidence_score}%
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-medium text-gray-900">{insight.title}</h4>
+                    <p className="text-sm text-gray-600 mt-1">{insight.description}</p>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {new Date(insight.generated_at).toLocaleDateString()}
+                  </span>
+                </div>
+
+                {formattedData.recommendations.length > 0 && (
+                  <div className="mb-3">
+                    <h5 className="font-medium text-gray-800 mb-2">Recommendations:</h5>
+                    <ul className="space-y-1">
+                      {formattedData.recommendations.map((rec, idx) => (
+                        <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {formattedData.suggested_actions.length > 0 && (
+                  <div>
+                    <h5 className="font-medium text-gray-800 mb-2">Suggested Actions:</h5>
+                    <ul className="space-y-1">
+                      {formattedData.suggested_actions.map((action, idx) => (
+                        <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
+                          <ArrowRight className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                          {action}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <Brain className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No AI Insights Yet</h3>
+          <p className="text-gray-500 mb-4">Generate AI analysis to get intelligent insights for this deal</p>
+          <button
+            onClick={triggerAIInsight}
+            disabled={loading}
+            className={`px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <Brain className="h-5 w-5" />
+            {loading ? 'Analyzing...' : 'Generate AI Analysis'}
+          </button>
         </div>
       )}
     </div>

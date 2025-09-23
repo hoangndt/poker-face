@@ -55,14 +55,16 @@ Our AI-powered platform provides:
                        └─────────────────┘
 ```
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Git
+- **Python 3.8+** (for backend)
+- **Node.js 16+** (for frontend)
+- **Git**
+- **OpenAI API Key** (for AI agents)
 
-### Option 1: Docker Compose (Recommended)
+### Quick Setup
 
 1. **Clone the repository**
 
@@ -71,69 +73,181 @@ Our AI-powered platform provides:
    cd poker-face
    ```
 
-2. **Start the application**
+2. **Backend Setup**
 
    ```bash
-   docker-compose up -d
+   cd backend
+   
+   # Install Python dependencies
+   pip install -r requirements.txt
+   
+   # Set up environment variables
+   echo "OPENAI_API_KEY=your_openai_api_key_here" > .env
+   
+   # Initialize database with sample data
+   python init_sprint_db.py
+   
+   # Start the backend server
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-3. **Access the application**
-
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-
-4. **Train AI Models (Required for full functionality)**
+3. **Frontend Setup** (in a new terminal)
 
    ```bash
-   # Create sample data for training
-   curl -X POST http://localhost:8000/api/ai/create-sample-data
-
-   # Train the AI models
-   curl -X POST http://localhost:8000/api/ai/train-models
-
-   # Verify training status
-   curl http://localhost:8000/api/ai/model-status
+   cd frontend
+   
+   # Install Node.js dependencies
+   npm install
+   
+   # Start the development server
+   npm start
    ```
 
-5. **Test the system**
-   - Visit the dashboard at http://localhost:3000
-   - Try the Vietnam Dashboard: http://localhost:3000/vietnam-dashboard
-   - Test churn prediction: http://localhost:8000/api/ai/churn-prediction/CUST001
+4. **Access the application**
 
-### Option 2: Manual Setup
+   - **Sprint Board**: http://localhost:3000/sprint-board
+   - **Backend API**: http://localhost:8000
+   - **API Documentation**: http://localhost:8000/docs
 
-#### Backend Setup
+### 🗄️ Database Management
+
+#### Initialize Database
+
+Create the database schema and populate with sample data:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-python init_db.py  # Initialize database with sample data
-uvicorn main:app --reload
+python init_sprint_db.py
 ```
 
-#### Frontend Setup
+This will create:
+- 5 team members with different roles
+- 9 sample deals across all sprint stages
+- Customer conversation data
+- Complete sprint board structure
+
+#### Reset Database
+
+If you need to reset the database (removes all data):
 
 ```bash
-cd frontend
-npm install
-npm start
-```
+cd backend
 
-#### AI Model Training Setup
+# Method 1: Reset schema and reinitialize
+python -c "
+from database import engine
+from sprint_models import Base
+print('Recreating database schema...')
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+print('Database schema updated successfully')
+"
+
+# Reinitialize with sample data
+python init_sprint_db.py
+```
 
 ```bash
-# After both backend and frontend are running:
-
-# 1. Create sample training data
-curl -X POST http://localhost:8000/api/ai/create-sample-data
-
-# 2. Train all AI models
-curl -X POST http://localhost:8000/api/ai/train-models
-
-# 3. Verify models are trained
-curl http://localhost:8000/api/ai/model-status
+# Method 2: Quick reset script
+./reset_db.sh  # If you create this script
 ```
+
+#### Database Migration
+
+For schema changes (when models are updated):
+
+```bash
+cd backend
+
+# Drop and recreate schema
+python -c "
+from database import engine
+from sprint_models import Base
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+print('Database migrated successfully')
+"
+
+# Reinitialize data
+python init_sprint_db.py
+```
+
+### 🔧 Configuration
+
+#### Environment Variables
+
+Create a `.env` file in the `backend` directory:
+
+```bash
+# AI Configuration
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Database Configuration (optional - defaults to SQLite)
+DATABASE_URL=sqlite:///./sprint_board.db
+
+# API Configuration (optional)
+API_HOST=0.0.0.0
+API_PORT=8000
+```
+
+#### OpenAI API Key Setup
+
+1. Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Add it to your `.env` file:
+   ```bash
+   echo "OPENAI_API_KEY=sk-your-key-here" >> backend/.env
+   ```
+
+### 🧪 Testing the System
+
+1. **Verify Backend**
+   ```bash
+   curl http://localhost:8000/api/sprint/deals
+   ```
+
+2. **Test AI Agents**
+   ```bash
+   # Test lead qualification
+   curl -X POST http://localhost:8000/api/sprint/ai/insight/1 \
+        -H "Content-Type: application/json" \
+        -d '{"current_status": "lead"}'
+   
+   # Test solution design
+   curl -X POST http://localhost:8000/api/sprint/ai/insight/4 \
+        -H "Content-Type: application/json" \
+        -d '{"current_status": "qualified_solution"}'
+   ```
+
+3. **Access Sprint Board**
+   - Visit http://localhost:3000/sprint-board
+   - Drag deals between columns
+   - Click deals to view details
+   - Use AI insight buttons
+
+### 🎯 Sprint Board Features
+
+#### Core Functionality
+
+- **Kanban-style Board**: Lead → Qualified Solution → Qualified Delivery → Qualified CSO → Deal → Project
+- **Drag & Drop**: Move deals between stages
+- **AI Insights**: Generate intelligent analysis for each stage
+- **Deal Details**: Comprehensive modal with conversation history, technical requirements
+- **Status Management**: Dropdown menus and automatic person assignment
+
+#### AI Agents
+
+- **Lead Qualification Agent**: Analyzes customer requirements and suggests qualification strategies
+- **Solution Design Agent**: Recommends technical architecture and technology stack
+- **Delivery Planning Agent**: Plans team composition, timeline, and resource allocation
+- **CSO Agent**: Generates commercial proposals with pricing and terms
+
+#### Data Models
+
+- **Deals**: Core sales opportunities with status tracking
+- **Conversation Data**: Customer requirements and preferences
+- **Technical Solutions**: AI-generated technical recommendations
+- **Resource Allocation**: Team composition and delivery planning
+- **Proposals**: Commercial terms and pricing
 
 ## 📊 Features & Demo
 
@@ -206,47 +320,134 @@ curl http://localhost:8000/api/ai/model-status
 
 ## 📡 API Documentation
 
-### Core Endpoints
+### Sprint Board Endpoints
 
-#### Customer Management
+#### Deal Management
 
-```
-GET /api/customers - List customers with filtering
-GET /api/customers/{id} - Get customer details
-GET /api/customers/{id}/journey - Get customer journey
-PUT /api/customers/{id}/stage - Update lifecycle stage
-```
+```bash
+# Get all deals for sprint board
+GET /api/sprint/deals
 
-#### Analytics
+# Get detailed deal information
+GET /api/sprint/deals/{id}/detailed
 
-```
-GET /api/analytics/lifecycle - Lifecycle metrics
-GET /api/analytics/conversion-rates - Funnel analysis
-GET /api/analytics/revenue-metrics - Financial KPIs
-```
+# Create new deal
+POST /api/sprint/deals
 
-#### AI/ML
+# Update deal status
+PUT /api/sprint/deals/{id}/status
 
-```
-GET /api/ai/churn-prediction/{id} - Churn prediction
-GET /api/ai/churn-risk-customers - High-risk customers
-GET /api/ai/revenue-forecast - Revenue predictions
-GET /api/ai/clv/{id} - Customer lifetime value
-POST /api/ai/lead-score - Calculate lead score
-
-# AI Model Training & Management
-GET /api/ai/model-status - Check training status of all models
-POST /api/ai/train-models - Train AI models with current data
-POST /api/ai/create-sample-data - Create sample data for development
+# Get sprint board with columns
+GET /api/sprint/board
 ```
 
-#### Vietnam Market-Specific (Gradion Workflow)
+#### AI Insights & Agents
 
+```bash
+# Trigger AI insight for deal (auto-detects agent based on status)
+POST /api/sprint/ai/insight/{deal_id}
+Body: {"current_status": "lead|qualified_solution|qualified_delivery|qualified_cso"}
+
+# Lead qualification agent
+POST /api/sprint/ai/qualification/{deal_id}
+
+# Dashboard metrics
+GET /api/sprint/dashboard
 ```
-GET /api/vietnam/data-quality-report - HubSpot data quality issues
-GET /api/vietnam/cs-intervention-queue - Customer Success queue
-POST /api/vietnam/gradion-lead-score - Gradion-specific lead scoring
-GET /api/vietnam/churn-prediction/{id} - Vietnamese market churn prediction
+
+#### Person & Role Management
+
+```bash
+# Get all team members
+GET /api/sprint/persons
+
+# Create team member
+POST /api/sprint/persons
+
+# Update person
+PUT /api/sprint/persons/{id}
+```
+
+### AI Agent Details
+
+#### Lead Qualification Agent
+
+**Endpoint**: `POST /api/sprint/ai/qualification/{deal_id}`
+
+**Purpose**: Analyzes customer requirements and provides qualification insights
+
+**Output**:
+```json
+{
+  "qualification_score": 85.0,
+  "qualification_level": "High",
+  "missing_information": ["Budget details", "Timeline"],
+  "suggested_questions": ["What's your target launch date?"],
+  "recommendations": ["Schedule discovery call"],
+  "confidence": 90.0
+}
+```
+
+#### Solution Design Agent
+
+**Trigger**: When deal status is `qualified_solution`
+
+**Purpose**: Generates technical architecture recommendations
+
+**Output**:
+```json
+{
+  "solution_score": 90.0,
+  "solution_type": "Web Application",
+  "technology_stack": ["React", "FastAPI", "PostgreSQL"],
+  "implementation_phases": ["Phase 1: MVP", "Phase 2: Scale"],
+  "recommendations": ["Use microservices architecture"],
+  "confidence": 85.0
+}
+```
+
+#### Delivery Planning Agent
+
+**Trigger**: When deal status is `qualified_delivery`
+
+**Purpose**: Plans team composition and delivery strategy
+
+**Output**:
+```json
+{
+  "delivery_score": 75.0,
+  "delivery_approach": "Agile/Scrum",
+  "team_composition": [
+    {
+      "role": "Project Manager",
+      "allocation": 0.5,
+      "skills_required": ["Project Management", "Agile/Scrum"]
+    }
+  ],
+  "timeline": "4-6 months",
+  "budget_estimate": {
+    "development_cost": "$252k - $327k",
+    "total_estimate": "$302k - $378k"
+  }
+}
+```
+
+#### CSO Proposal Agent
+
+**Trigger**: When deal status is `qualified_cso`
+
+**Purpose**: Generates comprehensive commercial proposals
+
+**Output**:
+```json
+{
+  "proposal_score": 88.0,
+  "pricing_model": "Fixed Price",
+  "total_price": "$350,000",
+  "payment_terms": "30% upfront, 70% on milestones",
+  "timeline": "6 months",
+  "value_proposition": "Complete digital transformation..."
+}
 ```
 
 #### Pipeline
@@ -731,14 +932,19 @@ For questions, issues, or feature requests:
 
 ---
 
-**Built with ❤️ for the Customer Lifecycle AI Hackathon**
+**Built with ❤️ for AI-Powered Sales Pipeline Management**
 
-_Transforming customer relationships through AI-powered insights and optimization._
+_Transforming sales processes through intelligent automation and insights._
 
-## Reset db schema and data
+## 🔄 Quick Database Commands
 
-```
-cd /Users/hoangtuan/Desktop/Projects/NFQ/poker-face/backend && python -c "
+### Reset Database Schema and Data
+
+```bash
+cd backend
+
+# Reset everything (schema + data)
+python -c "
 from database import engine
 from sprint_models import Base
 print('Recreating database schema...')
@@ -746,6 +952,43 @@ Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 print('Database schema updated successfully')
 "
+
+# Reinitialize with sample data
+python init_sprint_db.py
 ```
 
-`python init_sprint_db.py`
+### Backup and Restore
+
+```bash
+# Backup current database
+cp sprint_board.db sprint_board.db.backup
+
+# Restore from backup
+cp sprint_board.db.backup sprint_board.db
+```
+
+### Development Database Reset Script
+
+Create `reset_db.sh` in the backend directory:
+
+```bash
+#!/bin/bash
+echo "🗑️  Resetting database..."
+python -c "
+from database import engine
+from sprint_models import Base
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+print('✅ Database schema reset')
+"
+
+echo "📊 Initializing sample data..."
+python init_sprint_db.py
+echo "🚀 Database ready!"
+```
+
+Make it executable:
+```bash
+chmod +x reset_db.sh
+./reset_db.sh
+```
