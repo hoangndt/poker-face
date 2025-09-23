@@ -98,6 +98,7 @@ class Deal(Base):
     proposal = relationship("Proposal", back_populates="deal", uselist=False)
     ai_insights = relationship("AIInsight", back_populates="deal")
     status_history = relationship("StatusHistory", back_populates="deal")
+    comments = relationship("Comment", back_populates="deal")
 
 # Customer Conversation Data
 class ConversationData(Base):
@@ -339,5 +340,19 @@ class ResourceRating(Base):
     current_workload = Column(Float, default=0)  # 0-1 scale
     preferred_project_types = Column(Text)  # JSON string
     availability_start_date = Column(DateTime)
-    
+
+# Deal Comments
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    deal_id = Column(Integer, ForeignKey("deals.id"), nullable=False)
+    commenter_name = Column(String, nullable=False)
+    commenter_role = Column(String)  # e.g., "Sales", "Engineering", "Management"
+    comment_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    deal = relationship("Deal", back_populates="comments")
+
     last_updated = Column(DateTime, default=datetime.utcnow)

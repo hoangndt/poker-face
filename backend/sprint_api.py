@@ -7,14 +7,15 @@ from datetime import datetime, timedelta
 
 from database import get_db
 from sprint_models import (
-    Deal, Person, ConversationData, TechnicalSolution, 
-    ResourceAllocation, Proposal, AIInsight, StatusHistory,
+    Deal, Person, ConversationData, TechnicalSolution,
+    ResourceAllocation, Proposal, AIInsight, StatusHistory, Comment,
     DealStatus, Priority, PersonRole
 )
 from sprint_schemas import (
     DealCreate, DealUpdate, DealResponse, SprintBoardResponse,
     SprintBoardColumn, PersonCreate, PersonResponse,
-    StatusUpdateRequest, AIQualificationRequest, AIQualificationResponse
+    StatusUpdateRequest, AIQualificationRequest, AIQualificationResponse,
+    CommentCreate, CommentResponse
 )
 from ai_agents.lead_qualification_agent import LeadQualificationAgent
 from ai_agents.solution_design_agent import SolutionDesignAgent
@@ -170,6 +171,7 @@ async def get_deal_detailed(deal_id: int, db: Session = Depends(get_db)):
     proposal = db.query(Proposal).filter(Proposal.deal_id == deal_id).first()
     ai_insights = db.query(AIInsight).filter(AIInsight.deal_id == deal_id).all()
     status_history = db.query(StatusHistory).filter(StatusHistory.deal_id == deal_id).order_by(StatusHistory.timestamp.desc()).all()
+    comments = db.query(Comment).filter(Comment.deal_id == deal_id).order_by(Comment.created_at.desc()).all()
     
     # Build comprehensive response
     detailed_deal = {
@@ -180,11 +182,48 @@ async def get_deal_detailed(deal_id: int, db: Session = Depends(get_db)):
         "proposal": proposal.__dict__ if proposal else None,
         "ai_insights": [insight.__dict__ for insight in ai_insights],
         "status_history": [history.__dict__ for history in status_history],
+        "comments": [CommentResponse.from_orm(comment).dict() for comment in comments],
         "timeline": _build_timeline(deal, status_history, ai_insights),
         "activity_summary": _build_activity_summary(deal, conversation_data, ai_insights)
     }
     
     return detailed_deal
+
+@router.post("/deals/{deal_id}/comments")
+async def create_comment(deal_id: int, comment: CommentCreate, db: Session = Depends(get_db)):
+    """Add a new comment to a deal"""
+    # Verify deal exists
+    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+
+    # Create new comment
+    db_comment = Comment(
+        deal_id=deal_id,
+        commenter_name=comment.commenter_name,
+        commenter_role=comment.commenter_role,
+        comment_text=comment.comment_text
+    )
+
+    db.add(db_comment)
+    db.commit()
+    db.refresh(db_comment)
+
+    return CommentResponse.from_orm(db_comment)
+
+@router.delete("/comments/{comment_id}")
+async def delete_comment(comment_id: int, db: Session = Depends(get_db)):
+    """Delete a comment by ID"""
+    # Find the comment
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    # Delete the comment
+    db.delete(comment)
+    db.commit()
+
+    return {"message": "Comment deleted successfully"}
 
 def _build_timeline(deal, status_history, ai_insights):
     """Build a chronological timeline of deal activities"""

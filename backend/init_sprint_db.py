@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from sprint_models import (
-    Base, Deal, Person, ConversationData, DealStatus, Priority, PersonRole
+    Base, Deal, Person, ConversationData, Comment, DealStatus, Priority, PersonRole
 )
 from models import CustomerData
 import csv
@@ -431,6 +431,96 @@ def create_conversation_data_from_csv(db: Session, deals: list):
         db.commit()
         print(f"Created basic conversation data for {min(2, len(deals))} deals")
 
+def create_deal_comments(db: Session, deals, persons):
+    """Create realistic comments for deals"""
+
+    # Comment templates by role
+    sales_comments = [
+        "Customer is very interested in the solution. They want to schedule a demo next week.",
+        "Had a great call with the decision maker. Budget is confirmed at ${budget}.",
+        "Customer has some concerns about implementation timeline. Need to address this.",
+        "Competitor analysis shows we have a strong advantage in this space.",
+        "Customer is ready to move forward. Waiting for technical requirements.",
+        "Follow-up meeting scheduled for next Tuesday to discuss pricing.",
+        "Customer loves our approach. They're comparing with one other vendor.",
+        "Need to get legal involved for contract review. Customer is eager to proceed.",
+        "Customer asked for references from similar implementations.",
+        "Pricing discussion went well. They're within our target range."
+    ]
+
+    engineering_comments = [
+        "Technical requirements look straightforward. Estimated 3-4 months development.",
+        "Customer has some unique integration requirements that need investigation.",
+        "Architecture review completed. Recommend microservices approach.",
+        "Security requirements are extensive but manageable with our current stack.",
+        "Performance requirements are challenging but achievable.",
+        "Customer's existing infrastructure is compatible with our solution.",
+        "Need to clarify data migration requirements from their legacy system.",
+        "Scalability requirements align well with our platform capabilities.",
+        "Customer's technical team is very knowledgeable. Good collaboration potential.",
+        "Some custom development required but within scope of standard offering."
+    ]
+
+    management_comments = [
+        "This deal aligns perfectly with our Q4 targets. High priority.",
+        "Resource allocation approved. Team can start immediately after contract signing.",
+        "Customer profile matches our ideal client. Strong strategic fit.",
+        "Recommend fast-tracking this opportunity. Competitive situation.",
+        "Budget approval needed for additional resources if we win this deal.",
+        "Customer has potential for expansion into other business units.",
+        "Risk assessment completed. Low risk, high reward opportunity.",
+        "Timeline is aggressive but achievable with current team capacity.",
+        "Customer references check out. Financially stable organization.",
+        "This could be a showcase project for our new capabilities."
+    ]
+
+    # Team member roles mapping
+    role_comments = {
+        PersonRole.SALES: sales_comments,
+        PersonRole.HEAD_OF_ENGINEERING: engineering_comments,
+        PersonRole.HEAD_OF_DELIVERY: engineering_comments,
+        PersonRole.PROJECT_MANAGER: engineering_comments,
+        PersonRole.CSO: management_comments
+    }
+
+    comments_created = 0
+
+    for deal in deals:
+        # Generate 2-5 comments per deal
+        num_comments = random.randint(2, 5)
+
+        for i in range(num_comments):
+            # Select random team member
+            commenter = random.choice(persons)
+
+            # Get appropriate comment template based on role
+            role_comment_pool = role_comments.get(commenter.role, sales_comments)
+            comment_text = random.choice(role_comment_pool)
+
+            # Replace budget placeholder if present
+            if "{budget}" in comment_text:
+                budget_value = f"{deal.estimated_value:,.0f}" if deal.estimated_value else "TBD"
+                comment_text = comment_text.replace("{budget}", budget_value)
+
+            # Generate timestamp (within last 30 days)
+            days_ago = random.randint(1, 30)
+            comment_date = datetime.now() - timedelta(days=days_ago)
+
+            # Create comment
+            comment = Comment(
+                deal_id=deal.id,
+                commenter_name=commenter.name,
+                commenter_role=commenter.role.value.title(),
+                comment_text=comment_text,
+                created_at=comment_date
+            )
+
+            db.add(comment)
+            comments_created += 1
+
+    db.commit()
+    print(f"Created {comments_created} comments across {len(deals)} deals")
+
 def initialize_sprint_database():
     """Initialize the sprint board database with dummy data"""
     
@@ -453,7 +543,10 @@ def initialize_sprint_database():
         
         print("\n3. Creating conversation data...")
         create_conversation_data_from_csv(db, deals)
-        
+
+        print("\n4. Creating deal comments...")
+        create_deal_comments(db, deals, persons)
+
         print(f"\n✅ Sprint board initialization complete!")
         print(f"Created:")
         print(f"  - {len(persons)} team members")

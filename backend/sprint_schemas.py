@@ -330,3 +330,20 @@ class DashboardResponse(BaseModel):
     metrics: DashboardMetrics
     person_workloads: List[PersonWorkload]
     recent_ai_insights: List[AIInsightResponse]
+
+# Comment Schemas
+class CommentBase(BaseModel):
+    commenter_name: str
+    commenter_role: Optional[str] = None
+    comment_text: str
+
+class CommentCreate(CommentBase):
+    deal_id: int
+
+class CommentResponse(CommentBase):
+    id: int
+    deal_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

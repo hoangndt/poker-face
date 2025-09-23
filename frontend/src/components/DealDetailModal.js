@@ -23,7 +23,9 @@ import {
   Users,
   Percent,
   Euro,
-  ArrowRight
+  ArrowRight,
+  Send,
+  Trash2
 } from 'lucide-react';
 import { sprintAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -32,6 +34,9 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
   const [dealData, setDealData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   useEffect(() => {
     if (isOpen && dealId) {
@@ -44,6 +49,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
       setLoading(true);
       const response = await sprintAPI.getDealDetailed(dealId);
       setDealData(response.data);
+      setComments(response.data.comments || []);
     } catch (error) {
       console.error('Error fetching deal details:', error);
       toast.error('Failed to load deal details');
@@ -130,6 +136,54 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
     return colors[priority] || colors.medium;
   };
 
+  const handlePostComment = async () => {
+    if (!newComment.trim() || !dealData?.deal?.id) return;
+
+    try {
+      setIsPostingComment(true);
+
+      // For now, we'll use a default commenter name and role
+      // In a real app, this would come from the authenticated user
+      const commentData = {
+        deal_id: dealData.deal.id,
+        commenter_name: 'Current User', // This should come from auth context
+        commenter_role: 'Sales', // This should come from auth context
+        comment_text: newComment.trim()
+      };
+
+      const response = await sprintAPI.createComment(dealData.deal.id, commentData);
+
+      // Add the new comment to the local state
+      setComments(prevComments => [response.data, ...prevComments]);
+      setNewComment('');
+
+      toast.success('Comment posted successfully');
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      toast.error('Failed to post comment');
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return;
+    }
+
+    try {
+      await sprintAPI.deleteComment(commentId);
+
+      // Remove the comment from local state
+      setComments(prevComments => prevComments.filter(comment => comment.id !== commentId));
+
+      toast.success('Comment deleted successfully');
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast.error('Failed to delete comment');
+    }
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Circle },
     { id: 'conversation', label: 'Conversation', icon: MessageSquare },
@@ -143,7 +197,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-full h-full flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-4">
@@ -203,8 +257,18 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
             </div>
 
             {/* Content */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
-              {activeTab === 'overview' && <OverviewTab dealData={dealData} formatCurrency={formatCurrency} formatDate={formatDate} />}
+            <div className="p-6 flex-1 pb-8 overflow-y-auto">
+              {activeTab === 'overview' && <OverviewTab
+                dealData={dealData}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+                comments={comments}
+                newComment={newComment}
+                setNewComment={setNewComment}
+                handlePostComment={handlePostComment}
+                handleDeleteComment={handleDeleteComment}
+                isPostingComment={isPostingComment}
+              />}
               {activeTab === 'conversation' && <ConversationTab dealData={dealData} />}
               {activeTab === 'technical' && <TechnicalTab dealData={dealData} />}
               {activeTab === 'ai-insights' && <AIInsightsTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
@@ -223,11 +287,11 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
 };
 
 // Overview Tab Component
-const OverviewTab = ({ dealData, formatCurrency, formatDate }) => {
+const OverviewTab = ({ dealData, formatCurrency, formatDate, comments, newComment, setNewComment, handlePostComment, handleDeleteComment, isPostingComment }) => {
   const { deal, conversation_data, activity_summary } = dealData;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6">
       {/* Basic Information */}
       <div className="space-y-6">
         <div className="bg-gray-50 rounded-lg p-4">
@@ -357,6 +421,8 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate }) => {
                 {deal.weighted_amount ? `€${deal.weighted_amount.toLocaleString()}` : 'Not calculated'}
               </span>
             </div>
+
+
           </div>
         </div>
       </div>
@@ -393,6 +459,73 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate }) => {
             </div>
           </>
         )}
+
+          {/* Comments Section */}
+          <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Comments
+              </h3>
+
+              {/* Add Comment Form */}
+              <div className="space-y-3">
+            <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add your comment..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows="3"
+            />
+                  <button
+                      onClick={handlePostComment}
+                      disabled={!newComment.trim() || isPostingComment}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      <Send className="h-4 w-4 mr-2" />
+                      {isPostingComment ? 'Posting...' : 'Post Comment'}
+                  </button>
+              </div>
+
+              {/* Comments List */}
+              <div className="space-y-3 mt-4">
+                  {comments && comments.length > 0 ? (
+                      comments.map((comment, index) => (
+                          <div key={comment.id || index} className="bg-white rounded-lg p-3 border border-gray-200 group">
+                              <div className="flex justify-between items-start mb-2">
+                                  <div className="flex items-center space-x-2">
+                                      <span className="font-medium text-sm text-gray-900">{comment.commenter_name}</span>
+                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        {comment.commenter_role}
+                      </span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                      <span className="text-xs text-gray-500">
+                        {new Date(comment.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                      </span>
+                                      <button
+                                          onClick={() => handleDeleteComment(comment.id)}
+                                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                          title="Delete comment"
+                                      >
+                                          <Trash2 className="h-3 w-3" />
+                                      </button>
+                                  </div>
+                              </div>
+                              <p className="text-sm text-gray-700">{comment.comment_text}</p>
+                          </div>
+                      ))
+                  ) : (
+                      <p className="text-sm text-gray-500 italic">No comments yet</p>
+                  )}
+              </div>
+
+
+          </div>
       </div>
     </div>
   );

@@ -44,7 +44,11 @@ export const sprintAPI = {
   updateDeal: (dealId, dealData) => api.put(`/sprint/deals/${dealId}`, dealData),
   updateDealStatus: (dealId, statusData) => api.put(`/sprint/deals/${dealId}/status`, statusData),
   deleteDeal: (dealId) => api.delete(`/sprint/deals/${dealId}`),
-  
+
+  // Comments
+  createComment: (dealId, commentData) => api.post(`/sprint/deals/${dealId}/comments`, commentData),
+  deleteComment: (commentId) => api.delete(`/sprint/comments/${commentId}`),
+
   // Person management
   getPersons: () => api.get('/sprint/persons'),
   createPerson: (personData) => api.post('/sprint/persons', personData),
