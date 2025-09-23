@@ -27,6 +27,7 @@ import ChurnPrediction from "./components/ChurnPrediction";
 import RevenueForecasting from "./components/RevenueForecasting";
 import PipelineHealth from "./components/PipelineHealth";
 import VietnamDashboard from "./components/VietnamDashboard";
+import SprintBoard from "./components/SprintBoard";
 
 import "./App.css";
 
@@ -35,6 +36,7 @@ function App() {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: BarChart3 },
+    { name: "Sprint Board", href: "/sprint-board", icon: Target },
     { name: "Customers", href: "/customers", icon: Users },
     { name: "Analytics", href: "/analytics", icon: PieChart },
     { name: "Churn Prediction", href: "/churn-prediction", icon: AlertTriangle },
@@ -110,6 +112,7 @@ function App() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/sprint-board" element={<SprintBoard />} />
                 <Route path="/customers" element={<CustomerList />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/analytics" element={<Analytics />} />

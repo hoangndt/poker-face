@@ -34,6 +34,9 @@ from vietnam_models import (
 )
 import crud
 
+# Import sprint API
+from sprint_api import router as sprint_router
+
 app = FastAPI(
     title="Customer Lifecycle AI API",
     description="AI-powered Customer Lifecycle Management and Revenue Forecasting",
@@ -60,6 +63,9 @@ gradion_scorer = GradionLeadScorer()
 vietnam_churn_predictor = VietnamChurnPredictor()
 expansion_predictor = ExpansionRevenuePredictor()
 region_assigner = RegionAssignmentEngine()
+
+# Include sprint board API routes
+app.include_router(sprint_router)
 
 # Health check endpoint
 @app.get("/api/health")

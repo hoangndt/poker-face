@@ -33,6 +33,36 @@ export const aiAPI = {
   calculateCLV: (customerId) => api.get(`/ai/clv/${customerId}`),
 };
 
+// Sprint Board API calls
+export const sprintAPI = {
+  getSprintBoard: () => api.get('/sprint/board'),
+  // Deal operations
+  getDeals: (params = {}) => api.get('/sprint/deals', { params }),
+  getDeal: (dealId) => api.get(`/sprint/deals/${dealId}`),
+  getDealDetailed: (dealId) => api.get(`/sprint/deals/${dealId}/detailed`),
+  createDeal: (dealData) => api.post('/sprint/deals', dealData),
+  updateDeal: (dealId, dealData) => api.put(`/sprint/deals/${dealId}`, dealData),
+  updateDealStatus: (dealId, statusData) => api.put(`/sprint/deals/${dealId}/status`, statusData),
+  deleteDeal: (dealId) => api.delete(`/sprint/deals/${dealId}`),
+  
+  // Person management
+  getPersons: () => api.get('/sprint/persons'),
+  createPerson: (personData) => api.post('/sprint/persons', personData),
+  
+  // AI Insights
+  triggerAIInsight: (dealId, currentStatus) => api.post(`/sprint/ai/insight/${dealId}`, { current_status: currentStatus }),
+  getAIInsights: (dealId) => api.get(`/sprint/ai/insights/${dealId}`),
+  
+  // AI Actions for different stages
+  triggerAIQualification: (dealId) => api.post(`/sprint/ai/qualification/${dealId}`),
+  triggerAISolution: (dealId) => api.post(`/sprint/ai/solution/${dealId}`),
+  triggerAIResourceAllocation: (dealId) => api.post(`/sprint/ai/resource-allocation/${dealId}`),
+  triggerAIProposal: (dealId) => api.post(`/sprint/ai/proposal/${dealId}`),
+  
+  // Dashboard
+  getDashboard: () => api.get('/sprint/dashboard'),
+};
+
 // Pipeline API calls
 export const pipelineAPI = {
   getPipelineHealth: () => api.get('/pipeline/health'),
