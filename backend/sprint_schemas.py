@@ -53,6 +53,21 @@ class DealBase(BaseModel):
     priority: PriorityEnum = PriorityEnum.MEDIUM
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None
+    contact_person: Optional[str] = None  # Primary contact at customer company
+    decision_makers: Optional[str] = None  # Key decision makers at customer company
+
+    # Geographic Information
+    region: Optional[str] = None  # e.g., "North America", "Europe", "Asia-Pacific"
+    country: Optional[str] = None  # e.g., "United States", "Germany", "Japan"
+
+    # Deal Overview
+    velocity: Optional[str] = None  # "Fast", "Medium", "Slow"
+    deal_stage: Optional[str] = None  # "Closed Won", "Closed Lost", "Negotiation", "Proposal"
+    deal_description: Optional[str] = None  # Detailed description of the deal/project
+    deal_probability: Optional[int] = None  # Percentage chance of closing (0-100)
+    weighted_amount: Optional[float] = None  # Deal value in Euros (estimated_value * probability)
+
+    # Financial
     estimated_value: Optional[float] = None
     budget_range_min: Optional[float] = None
     budget_range_max: Optional[float] = None
@@ -78,12 +93,14 @@ class DealResponse(DealBase):
     id: int
     customer_id: Optional[int] = None
     assigned_person_id: Optional[int] = None
+    solution_owner_id: Optional[int] = None
     board_position: int
     created_at: datetime
     updated_at: datetime
     actual_close_date: Optional[datetime] = None
     assigned_person: Optional[PersonResponse] = None
-    
+    solution_owner: Optional[PersonResponse] = None
+
     class Config:
         from_attributes = True
 

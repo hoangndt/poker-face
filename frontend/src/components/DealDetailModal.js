@@ -1,23 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  User, 
-  Calendar, 
-  DollarSign, 
-  Phone, 
-  Mail, 
-  Building, 
-  Clock, 
-  MessageSquare, 
-  Target, 
-  Settings, 
-  FileText, 
+import {
+  X,
+  User,
+  Calendar,
+  DollarSign,
+  Phone,
+  Mail,
+  Building,
+  Clock,
+  MessageSquare,
+  Target,
+  Settings,
+  FileText,
   Brain,
   Activity,
   ChevronRight,
   AlertCircle,
   CheckCircle,
   Circle,
+  TrendingUp,
+  BarChart3,
+  Users,
+  Percent,
+  Euro,
   ArrowRight
 } from 'lucide-react';
 import { sprintAPI } from '../services/api';
@@ -240,8 +245,12 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate }) => {
               <span className="font-medium">{deal.customer_email || 'Not specified'}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-gray-600">Contact Person:</span>
+              <span className="font-medium">{deal.contact_person || 'Not specified'}</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-gray-600">Decision Makers:</span>
-              <span className="font-medium">{conversation_data?.decision_makers || 'Unknown'}</span>
+              <span className="font-medium">{deal.decision_makers || 'Not specified'}</span>
             </div>
           </div>
         </div>
@@ -275,8 +284,16 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate }) => {
           </h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600">Assigned To:</span>
+              <span className="text-gray-600">Contact owner:</span>
               <span className="font-medium">{deal.assigned_person?.name || 'Unassigned'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Region:</span>
+              <span className="font-medium">{deal.region || 'Not specified'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Country:</span>
+              <span className="font-medium">{deal.country || 'Not specified'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Expected Close:</span>
@@ -288,14 +305,68 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate }) => {
             </div>
           </div>
         </div>
+
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Deal Overview
+          </h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Solution Owner:</span>
+              <span className="font-medium">{deal.solution_owner?.name || 'Not assigned'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Velocity:</span>
+              <span className="font-medium">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  deal.velocity === 'Fast' ? 'bg-green-100 text-green-800' :
+                  deal.velocity === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                  deal.velocity === 'Slow' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {deal.velocity || 'Not specified'}
+                </span>
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Deal Stage:</span>
+              <span className="font-medium">
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  deal.deal_stage === 'Closed Won' ? 'bg-green-100 text-green-800' :
+                  deal.deal_stage === 'Closed Lost' ? 'bg-red-100 text-red-800' :
+                  deal.deal_stage === 'Negotiation' ? 'bg-blue-100 text-blue-800' :
+                  deal.deal_stage === 'Proposal' ? 'bg-purple-100 text-purple-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {deal.deal_stage || 'Not specified'}
+                </span>
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Deal Probability:</span>
+              <span className="font-medium flex items-center">
+                <Percent className="h-3 w-3 mr-1" />
+                {deal.deal_probability ? `${deal.deal_probability}%` : 'Not specified'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Weighted Amount:</span>
+              <span className="font-medium flex items-center">
+                <Euro className="h-3 w-3 mr-1" />
+                {deal.weighted_amount ? `€${deal.weighted_amount.toLocaleString()}` : 'Not calculated'}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Description & Requirements */}
       <div className="space-y-6">
         <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="font-medium text-gray-900 mb-3">Description</h3>
+          <h3 className="font-medium text-gray-900 mb-3">Deal Description</h3>
           <p className="text-sm text-gray-700">
-            {deal.description || 'No description provided'}
+            {deal.deal_description || deal.description || 'No description provided'}
           </p>
         </div>
 

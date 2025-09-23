@@ -42,37 +42,52 @@ class Person(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    assigned_deals = relationship("Deal", back_populates="assigned_person")
+    assigned_deals = relationship("Deal", foreign_keys="Deal.assigned_person_id", back_populates="assigned_person")
 
 # Main Deal/Sprint Card
 class Deal(Base):
     __tablename__ = "deals"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     description = Column(Text)
     status = Column(String, default="lead")  # Temporarily using String instead of Enum
     priority = Column(String, default="medium")
-    
+
     # Customer Information
     customer_name = Column(String)
     customer_email = Column(String)
-    
+    contact_person = Column(String)  # Primary contact at customer company
+    decision_makers = Column(String)  # Key decision makers at customer company
+
+    # Geographic Information
+    region = Column(String)  # e.g., "North America", "Europe", "Asia-Pacific"
+    country = Column(String)  # e.g., "United States", "Germany", "Japan"
+
     # Assignment
     assigned_person_id = Column(Integer, ForeignKey("persons.id"))
-    assigned_person = relationship("Person", back_populates="assigned_deals")
-    
+    assigned_person = relationship("Person", foreign_keys=[assigned_person_id], back_populates="assigned_deals")
+    solution_owner_id = Column(Integer, ForeignKey("persons.id"))
+    solution_owner = relationship("Person", foreign_keys=[solution_owner_id])
+
+    # Deal Overview
+    velocity = Column(String)  # "Fast", "Medium", "Slow"
+    deal_stage = Column(String)  # "Closed Won", "Closed Lost", "Negotiation", "Proposal"
+    deal_description = Column(Text)  # Detailed description of the deal/project
+    deal_probability = Column(Integer)  # Percentage chance of closing (0-100)
+    weighted_amount = Column(Float)  # Deal value in Euros (estimated_value * probability)
+
     # Financial
     estimated_value = Column(Float)
     budget_range_min = Column(Float)
     budget_range_max = Column(Float)
-    
+
     # Timeline
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     expected_close_date = Column(DateTime)
     actual_close_date = Column(DateTime)
-    
+
     # Sprint Board Position
     board_position = Column(Integer, default=0)  # For ordering within status column
     

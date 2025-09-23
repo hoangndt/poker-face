@@ -64,6 +64,34 @@ def create_dummy_persons(db: Session):
             'skills': '{"skills": ["Agile Management", "Team Coordination", "Quality Assurance"]}',
             'availability': 0.85,
             'hourly_rate': 160.0
+        },
+        # Additional solution owners
+        {
+            'name': 'Michael Thompson',
+            'email': 'michael.thompson@company.com',
+            'role': PersonRole.HEAD_OF_ENGINEERING,
+            'department': 'Engineering',
+            'skills': '{"skills": ["Cloud Architecture", "DevOps", "Microservices", "AI/ML"]}',
+            'availability': 0.8,
+            'hourly_rate': 220.0
+        },
+        {
+            'name': 'Sarah Kim',
+            'email': 'sarah.kim@company.com',
+            'role': PersonRole.HEAD_OF_ENGINEERING,
+            'department': 'Engineering',
+            'skills': '{"skills": ["Frontend Development", "UX/UI", "Mobile Development"]}',
+            'availability': 0.85,
+            'hourly_rate': 190.0
+        },
+        {
+            'name': 'James Anderson',
+            'email': 'james.anderson@company.com',
+            'role': PersonRole.HEAD_OF_DELIVERY,
+            'department': 'Delivery',
+            'skills': '{"skills": ["Enterprise Solutions", "Integration", "Security"]}',
+            'availability': 0.7,
+            'hourly_rate': 210.0
         }
     ]
     
@@ -88,162 +116,240 @@ def create_dummy_persons(db: Session):
     return created_persons
 
 def create_dummy_deals(db: Session, persons: list):
-    """Create dummy deals across different stages"""
-    
-    # Get person IDs by role
-    person_by_role = {person.role: person.id for person in persons}
-    
-    deals_data = [
-        # LEAD status deals
+    """Create 50 dummy deals across different stages with enhanced data"""
+
+    # Get person IDs by role for assignment
+    sales_persons = [p.id for p in persons if p.role == PersonRole.SALES]
+    engineering_persons = [p.id for p in persons if p.role == PersonRole.HEAD_OF_ENGINEERING]
+    delivery_persons = [p.id for p in persons if p.role == PersonRole.HEAD_OF_DELIVERY]
+    cso_persons = [p.id for p in persons if p.role == PersonRole.CSO]
+    pm_persons = [p.id for p in persons if p.role == PersonRole.PROJECT_MANAGER]
+
+    # All persons for solution owners
+    all_persons = [p.id for p in persons]
+
+    # Data for generating realistic deals
+    regions = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]
+    countries = {
+        "North America": ["United States", "Canada", "Mexico"],
+        "Europe": ["Germany", "United Kingdom", "France", "Netherlands", "Spain", "Italy"],
+        "Asia-Pacific": ["Japan", "Australia", "Singapore", "South Korea", "India"],
+        "Latin America": ["Brazil", "Argentina", "Chile", "Colombia"],
+        "Middle East & Africa": ["UAE", "Saudi Arabia", "South Africa", "Egypt"]
+    }
+
+    contact_names = [
+        "John Smith", "Emily Davis", "Michael Brown", "Sarah Wilson", "David Johnson",
+        "Lisa Anderson", "Robert Taylor", "Jennifer Martinez", "William Garcia", "Maria Rodriguez",
+        "James Thompson", "Patricia White", "Christopher Lee", "Linda Harris", "Daniel Clark",
+        "Barbara Lewis", "Matthew Walker", "Susan Hall", "Anthony Allen", "Nancy Young"
+    ]
+
+    # Decision makers templates for different company sizes
+    decision_makers_templates = [
+        "CEO, CTO",
+        "CEO, CFO, CTO",
+        "VP Engineering, Director of Operations",
+        "CTO, Head of Product",
+        "CEO, VP Sales, CTO",
+        "Managing Director, IT Director",
+        "President, VP Technology",
+        "CEO, Head of Digital Transformation",
+        "CTO, VP Engineering, Product Manager",
+        "CEO, CFO, Head of IT"
+    ]
+
+    velocities = ["Fast", "Medium", "Slow"]
+    deal_stages = ["Closed Won", "Closed Lost", "Negotiation", "Proposal", "Discovery", "Qualification"]
+
+    # Base deal templates
+    deal_templates = [
         {
             'title': 'Manufacturing CRM System - TechCorp',
             'description': 'Custom CRM system for manufacturing operations with inventory tracking',
-            'status': 'lead',
-            'priority': 'high',
+            'deal_description': 'Comprehensive CRM solution designed specifically for manufacturing companies, featuring real-time inventory tracking, production planning integration, and customer lifecycle management.',
             'customer_name': 'TechCorp Manufacturing',
             'customer_email': 'contact@techcorp.com',
             'estimated_value': 85000.0,
             'budget_range_min': 50000.0,
             'budget_range_max': 100000.0,
-            'expected_close_date': datetime.now() + timedelta(days=45),
-            'assigned_person_id': person_by_role.get(PersonRole.SALES),
-            'board_position': 0
         },
         {
             'title': 'E-commerce Platform - ShopFast',
             'description': 'Modern e-commerce platform with mobile app and payment integration',
-            'status': 'lead',
-            'priority': 'high',
+            'deal_description': 'Next-generation e-commerce platform with advanced analytics, mobile-first design, multi-payment gateway integration, and AI-powered recommendation engine.',
             'customer_name': 'RetailPlus',
             'customer_email': 'info@retailplus.com',
             'estimated_value': 120000.0,
             'budget_range_min': 75000.0,
             'budget_range_max': 150000.0,
-            'expected_close_date': datetime.now() + timedelta(days=60),
-            'assigned_person_id': person_by_role.get(PersonRole.SALES),
-            'board_position': 1
         },
         {
             'title': 'Healthcare Management System',
             'description': 'Patient management system with appointment scheduling',
-            'status': 'lead',
-            'priority': 'urgent',
+            'deal_description': 'Comprehensive healthcare management platform featuring patient records, appointment scheduling, billing integration, and HIPAA-compliant data management.',
             'customer_name': 'HealthCare Solutions',
             'customer_email': 'admin@healthcare-solutions.com',
             'estimated_value': 200000.0,
             'budget_range_min': 150000.0,
             'budget_range_max': 250000.0,
-            'expected_close_date': datetime.now() + timedelta(days=30),
-            'assigned_person_id': person_by_role.get(PersonRole.SALES),
-            'board_position': 2
-        },
-        
-        # QUALIFIED_SOLUTION status deals
-        {
-            'title': 'Logistics Platform - FastShip',
-            'description': 'Route optimization and fleet management system',
-            'status': 'qualified_solution',
-            'priority': 'high',
-            'customer_name': 'FastShip Logistics',
-            'customer_email': 'tech@fastship.com',
-            'estimated_value': 90000.0,
-            'budget_range_min': 60000.0,
-            'budget_range_max': 120000.0,
-            'expected_close_date': datetime.now() + timedelta(days=35),
-            'assigned_person_id': person_by_role.get(PersonRole.HEAD_OF_ENGINEERING),
-            'board_position': 0
         },
         {
             'title': 'Financial Services Platform',
             'description': 'Compliance tracking and reporting automation',
-            'status': 'qualified_solution',
-            'priority': 'high',
+            'deal_description': 'Enterprise-grade financial services platform with automated compliance reporting, risk management, and regulatory tracking capabilities.',
             'customer_name': 'SecureBank',
             'customer_email': 'it@securebank.com',
             'estimated_value': 300000.0,
             'budget_range_min': 250000.0,
             'budget_range_max': 350000.0,
-            'expected_close_date': datetime.now() + timedelta(days=90),
-            'assigned_person_id': person_by_role.get(PersonRole.HEAD_OF_ENGINEERING),
-            'board_position': 1
         },
-        
-        # QUALIFIED_DELIVERY status deals
+        {
+            'title': 'Logistics Platform - FastShip',
+            'description': 'Route optimization and fleet management system',
+            'deal_description': 'Advanced logistics management system with real-time route optimization, fleet tracking, and delivery performance analytics.',
+            'customer_name': 'FastShip Logistics',
+            'customer_email': 'tech@fastship.com',
+            'estimated_value': 90000.0,
+            'budget_range_min': 60000.0,
+            'budget_range_max': 120000.0,
+        },
         {
             'title': 'Educational Platform - EduTech',
             'description': 'Student management and online learning platform',
-            'status': 'qualified_delivery',
-            'priority': 'medium',
+            'deal_description': 'Comprehensive educational technology platform with student information system, online learning modules, and performance analytics.',
             'customer_name': 'EduTech Institute',
             'customer_email': 'projects@edutech.edu',
             'estimated_value': 75000.0,
             'budget_range_min': 50000.0,
             'budget_range_max': 100000.0,
-            'expected_close_date': datetime.now() + timedelta(days=50),
-            'assigned_person_id': person_by_role.get(PersonRole.HEAD_OF_DELIVERY),
-            'board_position': 0
         },
-        
-        # QUALIFIED_CSO status deals
         {
             'title': 'Supply Chain Management - GlobalTrade',
             'description': 'Vendor portal and procurement automation',
-            'status': 'qualified_cso',
-            'priority': 'high',
+            'deal_description': 'Enterprise supply chain management solution with vendor portal, automated procurement workflows, and supply chain visibility.',
             'customer_name': 'GlobalTrade Corp',
             'customer_email': 'procurement@globaltrade.com',
             'estimated_value': 180000.0,
             'budget_range_min': 150000.0,
             'budget_range_max': 200000.0,
-            'expected_close_date': datetime.now() + timedelta(days=25),
-            'assigned_person_id': person_by_role.get(PersonRole.CSO),
-            'board_position': 0
         },
-        
-        # DEAL status (closed deals)
         {
             'title': 'Real Estate Management - PropTech',
             'description': 'Property listings and client portal system',
-            'status': 'deal',
-            'priority': 'medium',
+            'deal_description': 'Modern real estate management platform with property listings, client portal, virtual tours, and transaction management.',
             'customer_name': 'PropTech Realty',
             'customer_email': 'systems@proptech.com',
             'estimated_value': 65000.0,
-            'expected_close_date': datetime.now() - timedelta(days=5),
-            'actual_close_date': datetime.now() - timedelta(days=5),
-            'assigned_person_id': person_by_role.get(PersonRole.SALES),
-            'board_position': 0
+            'budget_range_min': 45000.0,
+            'budget_range_max': 85000.0,
         },
-        
-        # PROJECT status (active projects)
         {
             'title': 'Construction Management - BuildFast',
             'description': 'Project management and cost tracking system',
-            'status': 'project',
-            'priority': 'high',
+            'deal_description': 'Comprehensive construction project management platform with cost tracking, resource allocation, and progress monitoring.',
             'customer_name': 'BuildFast Construction',
             'customer_email': 'pm@buildfast.com',
             'estimated_value': 150000.0,
-            'expected_close_date': datetime.now() - timedelta(days=30),
-            'actual_close_date': datetime.now() - timedelta(days=30),
-            'assigned_person_id': person_by_role.get(PersonRole.PROJECT_MANAGER),
-            'board_position': 0
+            'budget_range_min': 120000.0,
+            'budget_range_max': 180000.0,
         }
     ]
-    
+        
+
+    # Generate 50 deals using the templates
+    statuses = ['lead', 'qualified_solution', 'qualified_delivery', 'qualified_cso', 'deal', 'project']
+    priorities = ['low', 'medium', 'high', 'urgent']
+
     created_deals = []
-    for deal_data in deals_data:
+
+    for i in range(50):
+        # Use template cyclically
+        template = deal_templates[i % len(deal_templates)]
+
+        # Select region and country
+        region = random.choice(regions)
+        country = random.choice(countries[region])
+
+        # Generate deal data
+        status = random.choice(statuses)
+        priority = random.choice(priorities)
+        velocity = random.choice(velocities)
+        deal_stage = random.choice(deal_stages)
+        contact_person = random.choice(contact_names)
+        decision_makers = random.choice(decision_makers_templates)
+        deal_probability = random.randint(10, 95)
+
+        # Calculate weighted amount in Euros
+        estimated_value_eur = template['estimated_value'] * 0.85  # Convert to EUR (approximate)
+        weighted_amount = estimated_value_eur * (deal_probability / 100)
+
+        # Assign persons based on status
+        if status == 'lead':
+            assigned_person_id = random.choice(sales_persons) if sales_persons else None
+        elif status == 'qualified_solution':
+            assigned_person_id = random.choice(engineering_persons) if engineering_persons else None
+        elif status == 'qualified_delivery':
+            assigned_person_id = random.choice(delivery_persons) if delivery_persons else None
+        elif status == 'qualified_cso':
+            assigned_person_id = random.choice(cso_persons) if cso_persons else None
+        elif status == 'project':
+            assigned_person_id = random.choice(pm_persons) if pm_persons else None
+        else:  # deal
+            assigned_person_id = random.choice(sales_persons) if sales_persons else None
+
+        solution_owner_id = random.choice(all_persons) if all_persons else None
+
+        # Generate dates
+        if status in ['deal', 'project']:
+            expected_close_date = datetime.now() - timedelta(days=random.randint(1, 60))
+            actual_close_date = expected_close_date + timedelta(days=random.randint(-5, 10))
+        else:
+            expected_close_date = datetime.now() + timedelta(days=random.randint(15, 120))
+            actual_close_date = None
+
+        # Create unique title if it's a duplicate
+        title = template['title']
+        if i > 0:
+            title = f"{template['title']} - {i+1}"
+
+        deal_data = {
+            'title': title,
+            'description': template['description'],
+            'deal_description': template['deal_description'],
+            'status': status,
+            'priority': priority,
+            'customer_name': template['customer_name'],
+            'customer_email': template['customer_email'],
+            'contact_person': contact_person,
+            'decision_makers': decision_makers,
+            'region': region,
+            'country': country,
+            'estimated_value': template['estimated_value'],
+            'budget_range_min': template['budget_range_min'],
+            'budget_range_max': template['budget_range_max'],
+            'expected_close_date': expected_close_date,
+            'actual_close_date': actual_close_date,
+            'assigned_person_id': assigned_person_id,
+            'solution_owner_id': solution_owner_id,
+            'velocity': velocity,
+            'deal_stage': deal_stage,
+            'deal_probability': deal_probability,
+            'weighted_amount': weighted_amount,
+            'board_position': i % 10  # Distribute across board positions
+        }
+
         deal = Deal(**deal_data)
         db.add(deal)
         created_deals.append(deal)
-    
+
     db.commit()
     print(f"Created {len(created_deals)} deals")
-    
+
     # Refresh to get IDs
     for deal in created_deals:
         db.refresh(deal)
-    
+
     return created_deals
 
 def create_conversation_data_from_csv(db: Session, deals: list):
