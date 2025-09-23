@@ -524,7 +524,7 @@ const SprintBoard = () => {
       <div className="bg-white shadow-sm border-b border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Sprint Board</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Sale pipeline</h1>
             <p className="text-gray-600 mt-1">
               Manage deals through the sales pipeline with AI assistance
             </p>
