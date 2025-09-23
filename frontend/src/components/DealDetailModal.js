@@ -18,6 +18,7 @@ import {
   AlertCircle,
   CheckCircle,
   Circle,
+  Code,
   TrendingUp,
   BarChart3,
   Users,
@@ -608,12 +609,55 @@ const TechnicalTab = ({ dealData }) => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-green-50 rounded-lg p-4">
-              <h3 className="font-medium text-green-900 mb-2">Recommended Tech Stack</h3>
-              <p className="text-sm text-green-800">{technical_solution.recommended_tech_stack}</p>
+              <h3 className="font-medium text-green-900 mb-3 flex items-center">
+                <Code className="h-4 w-4 mr-2" />
+                Recommended Tech Stack
+              </h3>
+              {(() => {
+                try {
+                  const techStack = JSON.parse(technical_solution.recommended_tech_stack || '{}');
+                  return (
+                    <div className="space-y-3">
+                      {Object.entries(techStack).map(([category, technologies]) => (
+                        <div key={category} className="space-y-1">
+                          <h4 className="text-xs font-medium text-green-700 uppercase tracking-wide">
+                            {category.replace('_', ' ')}
+                          </h4>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.isArray(technologies) ? technologies.map((tech, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-white text-gray-700 border border-gray-300 shadow-sm"
+                              >
+                                {tech}
+                              </span>
+                            )) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-white text-gray-700 border border-gray-300 shadow-sm">
+                                {technologies}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {Object.keys(techStack).length === 0 && (
+                        <p className="text-sm text-green-700 italic">No tech stack specified</p>
+                      )}
+                    </div>
+                  );
+                } catch (error) {
+                  // Fallback for non-JSON data
+                  return (
+                    <p className="text-sm text-green-800">{technical_solution.recommended_tech_stack}</p>
+                  );
+                }
+              })()}
             </div>
 
             <div className="bg-purple-50 rounded-lg p-4">
-              <h3 className="font-medium text-purple-900 mb-2">Architecture Overview</h3>
+              <h3 className="font-medium text-purple-900 mb-2 flex items-center">
+                <Settings className="h-4 w-4 mr-2" />
+                Architecture Overview
+              </h3>
               <p className="text-sm text-purple-800">{technical_solution.architecture_overview}</p>
             </div>
           </div>

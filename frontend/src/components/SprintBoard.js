@@ -103,8 +103,28 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
   const [aiInsightData, setAiInsightData] = useState(null);
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
-  
+
   const getPriorityColor = (priority) => PRIORITY_COLORS[priority] || PRIORITY_COLORS.medium;
+
+  // Helper function to get available statuses based on current status
+  const getAvailableStatuses = (currentStatus) => {
+    const currentIndex = SPRINT_COLUMNS.findIndex(col => col.id === currentStatus);
+    if (currentIndex === -1) return [];
+
+    const availableStatuses = [];
+
+    // Add all previous statuses (can go backward to any previous status)
+    for (let i = 0; i < currentIndex; i++) {
+      availableStatuses.push(SPRINT_COLUMNS[i].id);
+    }
+
+    // Add next status only (can only go forward one step)
+    if (currentIndex < SPRINT_COLUMNS.length - 1) {
+      availableStatuses.push(SPRINT_COLUMNS[currentIndex + 1].id);
+    }
+
+    return availableStatuses;
+  };
   
   const formatCurrency = (amount) => {
     if (!amount) return 'No budget';
@@ -229,22 +249,43 @@ const DealCard = ({ deal, index, onDealClick, onStatusChange }) => {
                       </div>
                       {SPRINT_COLUMNS.map(column => {
                         const Icon = column.icon;
+                        const availableStatuses = getAvailableStatuses(deal.status);
+                        const isCurrentStatus = column.id === deal.status;
+                        const isAvailable = availableStatuses.includes(column.id);
+                        const isDisabled = isCurrentStatus || !isAvailable;
+
                         return (
                           <button
                             key={column.id}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(column.id);
+                              if (!isDisabled) {
+                                handleStatusChange(column.id);
+                              }
                             }}
-                            disabled={column.id === deal.status}
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                              column.id === deal.status ? 'bg-gray-50 text-gray-500' : 'text-gray-700'
+                            disabled={isDisabled}
+                            className={`w-full text-left px-3 py-2 text-sm flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isCurrentStatus
+                                ? 'bg-gray-50 text-gray-500'
+                                : isAvailable
+                                  ? 'text-gray-700 hover:bg-gray-50'
+                                  : 'text-gray-400'
                             }`}
+                            title={
+                              isCurrentStatus
+                                ? 'Current status'
+                                : !isAvailable
+                                  ? 'Cannot skip stages - move one step at a time forward or any step backward'
+                                  : ''
+                            }
                           >
                             <Icon className="h-4 w-4" />
                             <span>{column.title}</span>
-                            {column.id === deal.status && (
+                            {isCurrentStatus && (
                               <span className="ml-auto text-xs text-gray-400">(current)</span>
+                            )}
+                            {!isAvailable && !isCurrentStatus && (
+                              <span className="ml-auto text-xs text-gray-400">🚫</span>
                             )}
                           </button>
                         );
