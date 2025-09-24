@@ -126,6 +126,7 @@ class Deal(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     expected_close_date = Column(DateTime)
     actual_close_date = Column(DateTime)
+    implementation_time = Column(String)  # Estimated implementation duration (e.g., "3-6 months")
 
     # Contract Completion Tracking (for closed deals)
     contract_signed_date = Column(DateTime)  # When contract was signed

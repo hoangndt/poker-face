@@ -345,12 +345,17 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate, comments, newCommen
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="font-medium text-gray-900 mb-3 flex items-center">
             <User className="h-4 w-4 mr-2" />
-            Assignment & Timeline
+            Assignment
           </h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Contact owner:</span>
-              <span className="font-medium">{deal.assigned_person?.name || 'Unassigned'}</span>
+              <div className="text-right">
+                <div className="font-medium">{deal.assigned_person?.name || 'Unassigned'}</div>
+                {deal.assigned_person?.department && (
+                  <div className="text-xs text-gray-500">{deal.assigned_person.department}</div>
+                )}
+              </div>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Region:</span>
@@ -360,9 +365,22 @@ const OverviewTab = ({ dealData, formatCurrency, formatDate, comments, newCommen
               <span className="text-gray-600">Country:</span>
               <span className="font-medium">{deal.country || 'Not specified'}</span>
             </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+            <Clock className="h-4 w-4 mr-2" />
+            Timeline
+          </h3>
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Expected Close:</span>
               <span className="font-medium">{formatDate(deal.expected_close_date)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Implementation Time:</span>
+              <span className="font-medium">{deal.implementation_time || 'Not specified'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Days Active:</span>

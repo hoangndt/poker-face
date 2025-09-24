@@ -119,6 +119,9 @@ class DealBase(BaseModel):
     budget_range_max: Optional[float] = None
     expected_close_date: Optional[datetime] = None
 
+    # Timeline
+    implementation_time: Optional[str] = None  # Estimated implementation duration
+
 class DealCreate(DealBase):
     customer_id: Optional[int] = None
     assigned_person_id: Optional[int] = None

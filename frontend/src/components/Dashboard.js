@@ -147,7 +147,7 @@ const Dashboard = () => {
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sales Team Dream Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Sales Forecast Dashboard</h1>
               <p className="text-sm text-gray-600 mt-1">
                 Dashboard for sales team to track past sales and future sales by amount, close date, status, country, and lead source.
               </p>

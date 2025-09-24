@@ -54,7 +54,7 @@ function App() {
               }
             >
               <Icon icon="solar:chart-2-bold-duotone" className="h-5 w-5" />
-              <span>Dashboard</span>
+              <span>Sales Dashboard</span>
             </NavLink>
             <NavLink
               to="/sprint-board"
