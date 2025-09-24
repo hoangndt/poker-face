@@ -682,23 +682,18 @@ async def get_dashboard_analytics(db: Session = Depends(get_db)):
                 "deals_closed": deals_closed
             })
 
-        # Sales by region analysis - Map global regions to US regions for dashboard
-        global_to_us_region_map = {
-            "North America": "West Coast",
-            "Europe": "East Coast",
-            "Asia-Pacific": "West Coast",
-            "Latin America": "Southwest",
-            "Middle East & Africa": "Midwest"
-        }
-
-        region_sales = {}
+        # Country sales analysis - Group by actual countries
+        country_sales = {}
         for deal in deals:
-            global_region = deal.region or "North America"
-            us_region = global_to_us_region_map.get(global_region, "East Coast")
-            if us_region not in region_sales:
-                region_sales[us_region] = {"amount": 0, "count": 0}
-            region_sales[us_region]["amount"] += deal.estimated_value or 0
-            region_sales[us_region]["count"] += 1
+            country = deal.country or "Unknown"
+            if country not in country_sales:
+                country_sales[country] = {"amount": 0, "count": 0}
+            country_sales[country]["amount"] += deal.estimated_value or 0
+            country_sales[country]["count"] += 1
+
+        # Sort countries by amount and get top countries for better visualization
+        sorted_countries = sorted(country_sales.items(), key=lambda x: x[1]["amount"], reverse=True)
+        top_countries = dict(sorted_countries[:8])  # Show top 8 countries
 
         # Sales by status/stage analysis - Map database statuses to dashboard stage names
         status_to_stage_map = {
@@ -776,9 +771,9 @@ async def get_dashboard_analytics(db: Session = Depends(get_db)):
 
         return {
             "historical_sales": historical_sales,
-            "region_analysis": [
-                {"region": k, "amount": v["amount"], "count": v["count"]}
-                for k, v in region_sales.items()
+            "country_analysis": [
+                {"country": k, "amount": v["amount"], "count": v["count"]}
+                for k, v in top_countries.items()
             ],
             "stage_analysis": [
                 {"stage": k, "amount": v["amount"], "count": v["count"]}

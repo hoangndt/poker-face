@@ -95,18 +95,22 @@ const Dashboard = () => {
     { stage: 'Negotiation/Review', amount: 130000, percentage: 2.2 }
   ];
 
-  const salesByRegionData = analyticsData?.region_analysis?.map((item, index) => {
+  const salesByCountryData = analyticsData?.country_analysis?.map((item, index) => {
     const total = analyticsData?.summary?.total_pipeline || 1;
     return {
-      region: item.region,
+      country: item.country,
       amount: item.amount,
       percentage: ((item.amount / total) * 100).toFixed(1)
     };
   }).filter(item => item.amount > 0) || [
-    { region: 'East Coast', amount: 899000, percentage: 15.4 },
-    { region: 'Midwest', amount: 480000, percentage: 8.2 },
-    { region: 'Southwest', amount: 337000, percentage: 5.8 },
-    { region: 'West Coast', amount: 4284000, percentage: 73.4 }
+    { country: 'United States', amount: 4284000, percentage: 20.1 },
+    { country: 'Germany', amount: 2899000, percentage: 13.6 },
+    { country: 'United Kingdom', amount: 2480000, percentage: 11.6 },
+    { country: 'Canada', amount: 1837000, percentage: 8.6 },
+    { country: 'France', amount: 1650000, percentage: 7.7 },
+    { country: 'Australia', amount: 1420000, percentage: 6.6 },
+    { country: 'Japan', amount: 1290000, percentage: 6.0 },
+    { country: 'Netherlands', amount: 1100000, percentage: 5.1 }
   ];
 
   const salesByLeadSourceData = analyticsData?.lead_source_analysis || [
@@ -145,7 +149,7 @@ const Dashboard = () => {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Sales Team Dream Dashboard</h1>
               <p className="text-sm text-gray-600 mt-1">
-                Dashboard for sales team to track past sales and future sales by amount, close date, status, region, and lead source.
+                Dashboard for sales team to track past sales and future sales by amount, close date, status, country, and lead source.
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 As of Apr 22, 2023, 2:30 PM | Viewing as Gillian Bruce
@@ -361,12 +365,12 @@ const Dashboard = () => {
 
         {/* Bottom Row - Additional Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Sales & Potential Sales by Region */}
+          {/* Sales & Potential Sales by Country */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow border h-96">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-gray-900">Sales & Potential Sales by Region</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Sales & Potential Sales by Country</h3>
                   <button className="text-gray-400 hover:text-gray-600">
                     <Settings className="h-4 w-4" />
                   </button>
@@ -379,7 +383,7 @@ const Dashboard = () => {
                 <ResponsiveContainer width="100%" height={150}>
                   <PieChart>
                     <Pie
-                      data={salesByRegionData}
+                      data={salesByCountryData}
                       cx="50%"
                       cy="50%"
                       outerRadius={60}
@@ -387,23 +391,25 @@ const Dashboard = () => {
                       dataKey="amount"
                       label={({ percentage }) => `${percentage}%`}
                     >
-                      {salesByRegionData.map((entry, index) => (
+                      {salesByCountryData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value) => formatCurrency(value)} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="mt-2 text-center text-xl font-bold text-teal-600">$5.8M</div>
+                <div className="mt-2 text-center text-xl font-bold text-teal-600">
+                  {salesByCountryData.length > 0 ? formatChartNumber(salesByCountryData.reduce((sum, item) => sum + item.amount, 0)) : '$10.8M'}
+                </div>
                 <div className="mt-2 space-y-1 max-h-20 overflow-y-auto">
-                  {salesByRegionData.slice(0, 4).map((item, index) => (
-                    <div key={item.region} className="flex items-center justify-between text-xs">
+                  {salesByCountryData.slice(0, 4).map((item, index) => (
+                    <div key={item.country} className="flex items-center justify-between text-xs">
                       <div className="flex items-center min-w-0 flex-1">
                         <div
                           className="w-2 h-2 rounded mr-2 flex-shrink-0"
                           style={{ backgroundColor: COLORS[index % COLORS.length] }}
                         ></div>
-                        <span className="text-gray-600 truncate">{item.region}</span>
+                        <span className="text-gray-600 truncate">{item.country}</span>
                       </div>
                       <span className="text-gray-900 ml-2 flex-shrink-0">{formatChartNumber(item.amount)}</span>
                     </div>
