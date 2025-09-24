@@ -26,7 +26,10 @@ import {
   Euro,
   ArrowRight,
   Send,
-  Trash2
+  Trash2,
+  FileCheck,
+  AlertTriangle,
+  Star
 } from 'lucide-react';
 import { sprintAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -77,6 +80,8 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
       // Switch to appropriate tab based on deal status
       if (dealData.deal.status === 'qualified_delivery') {
         setActiveTab('resources');
+      } else if (dealData.deal.status === 'qualified_cso') {
+        setActiveTab('proposal');
       } else {
         setActiveTab('ai-insights');
       }
@@ -93,7 +98,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
       case 'lead': return 'Analyzing lead qualification...';
       case 'qualified_solution': return 'Designing technical solution...';
       case 'qualified_delivery': return 'Planning delivery strategy and resource allocation...';
-      case 'qualified_cso': return 'Generating commercial proposal...';
+      case 'qualified_cso': return 'Generating commercial proposal and pricing model...';
       default: return 'Running AI analysis...';
     }
   };
@@ -196,6 +201,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
     { id: 'ai-insights', label: 'AI Insights', icon: Brain },
     { id: 'timeline', label: 'Timeline', icon: Activity },
     { id: 'resources', label: 'Resources', icon: User },
+    { id: 'proposal', label: 'Proposal', icon: FileText },
   ];
 
   if (!isOpen) return null;
@@ -279,6 +285,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
               {activeTab === 'ai-insights' && <AIInsightsTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
               {activeTab === 'timeline' && <TimelineTab dealData={dealData} />}
               {activeTab === 'resources' && <ResourcesTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
+              {activeTab === 'proposal' && <ProposalTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
             </div>
           </>
         ) : (
@@ -1189,6 +1196,368 @@ const AIInsightsTab = ({ dealData, triggerAIInsight, loading }) => {
           >
             <Brain className="h-5 w-5" />
             {loading ? 'Analyzing...' : 'Generate AI Analysis'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Proposal Tab Component
+const ProposalTab = ({ dealData, triggerAIInsight, loading }) => {
+  const { proposal, deal } = dealData;
+
+  // Parse JSON data safely
+  const parseJSONSafely = (jsonString, fallback = []) => {
+    try {
+      return jsonString ? JSON.parse(jsonString) : fallback;
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      return fallback;
+    }
+  };
+
+  // Parse proposal data if it exists
+  const valueProposition = parseJSONSafely(proposal?.solution_overview);
+  const competitiveAdvantages = parseJSONSafely(proposal?.business_value);
+  const costBreakdown = parseJSONSafely(proposal?.cost_breakdown);
+  const riskMitigation = parseJSONSafely(proposal?.risk_mitigation);
+  const projectPhases = parseJSONSafely(proposal?.project_phases);
+  const keyMilestones = parseJSONSafely(proposal?.key_milestones);
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'TBD';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* AI Trigger Section */}
+      <div className="border-b pb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Commercial Proposal</h3>
+            <p className="text-sm text-gray-500">AI-generated proposal with pricing and commercial terms</p>
+          </div>
+          {(!proposal || deal?.status === 'qualified_cso') && (
+            <button
+              onClick={triggerAIInsight}
+              disabled={loading}
+              className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 ${
+                loading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              {loading ? 'Generating...' : 'Generate Proposal'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {proposal ? (
+        <div className="space-y-6">
+          {/* Executive Summary */}
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h3 className="font-medium text-blue-900 mb-3 flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Executive Summary
+            </h3>
+            <p className="text-sm text-blue-800 leading-relaxed">
+              {proposal.executive_summary || 'Comprehensive solution proposal tailored to client requirements and business objectives.'}
+            </p>
+            {proposal.proposal_status && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-xs text-blue-600">Status:</span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  proposal.proposal_status === 'approved' ? 'bg-green-100 text-green-800' :
+                  proposal.proposal_status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {proposal.proposal_status.charAt(0).toUpperCase() + proposal.proposal_status.slice(1)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Pricing Model & Cost Breakdown */}
+          <div className="bg-green-50 rounded-lg p-4">
+            <h3 className="font-medium text-green-900 mb-3 flex items-center">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Pricing Model & Cost Breakdown
+            </h3>
+            {costBreakdown && Object.keys(costBreakdown).length > 0 ? (
+              <div className="space-y-3">
+                {Object.entries(costBreakdown).map(([key, value], index) => (
+                  <div key={index} className="flex justify-between items-center bg-white rounded p-3">
+                    <div>
+                      <div className="font-medium text-green-900">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                      <div className="text-sm text-green-700">Commercial term details</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium text-green-900">{value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded p-4">
+                <p className="text-sm text-green-800">Cost breakdown and pricing model will be determined during proposal generation.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Value Proposition */}
+          <div className="bg-purple-50 rounded-lg p-4">
+            <h3 className="font-medium text-purple-900 mb-3 flex items-center">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Value Proposition
+            </h3>
+            {Array.isArray(valueProposition) && valueProposition.length > 0 ? (
+              <div className="space-y-2">
+                {valueProposition.map((value, index) => (
+                  <div key={index} className="flex items-start bg-white rounded p-3">
+                    <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <span className="text-sm text-purple-800">{value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded p-4">
+                <p className="text-sm text-purple-800">Value proposition will be defined during proposal generation.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Competitive Advantages */}
+          <div className="bg-indigo-50 rounded-lg p-4">
+            <h3 className="font-medium text-indigo-900 mb-3 flex items-center">
+              <Star className="h-4 w-4 mr-2" />
+              Competitive Advantages
+            </h3>
+            {Array.isArray(competitiveAdvantages) && competitiveAdvantages.length > 0 ? (
+              <div className="space-y-2">
+                {competitiveAdvantages.map((advantage, index) => (
+                  <div key={index} className="flex items-start bg-white rounded p-3">
+                    <Star className="h-4 w-4 text-indigo-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <span className="text-sm text-indigo-800">{advantage}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded p-4">
+                <p className="text-sm text-indigo-800">Competitive advantages will be identified during proposal generation.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Technical Approach */}
+          <div className="bg-cyan-50 rounded-lg p-4">
+            <h3 className="font-medium text-cyan-900 mb-3 flex items-center">
+              <Settings className="h-4 w-4 mr-2" />
+              Technical Approach
+            </h3>
+            <div className="bg-white rounded p-4">
+              <p className="text-sm text-cyan-800 leading-relaxed">
+                {proposal.technical_approach || 'Technical approach and implementation methodology will be detailed during proposal generation.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Terms & Conditions */}
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <h3 className="font-medium text-yellow-900 mb-3 flex items-center">
+              <FileCheck className="h-4 w-4 mr-2" />
+              Terms & Conditions
+            </h3>
+            <div className="space-y-3">
+              {proposal.assumptions && (
+                <div className="bg-white rounded p-3">
+                  <div className="font-medium text-yellow-900 mb-1">Assumptions</div>
+                  <div className="text-sm text-yellow-700">{proposal.assumptions}</div>
+                </div>
+              )}
+              {proposal.scope_limitations && (
+                <div className="bg-white rounded p-3">
+                  <div className="font-medium text-yellow-900 mb-1">Scope Limitations</div>
+                  <div className="text-sm text-yellow-700">{proposal.scope_limitations}</div>
+                </div>
+              )}
+              {proposal.terms_and_conditions && (
+                <div className="bg-white rounded p-3">
+                  <div className="font-medium text-yellow-900 mb-1">General Terms</div>
+                  <div className="text-sm text-yellow-700">{proposal.terms_and_conditions}</div>
+                </div>
+              )}
+              {!proposal.assumptions && !proposal.scope_limitations && !proposal.terms_and_conditions && (
+                <div className="bg-white rounded p-4">
+                  <p className="text-sm text-yellow-800">Terms and conditions will be defined during proposal generation.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Implementation Timeline */}
+          <div className="bg-orange-50 rounded-lg p-4">
+            <h3 className="font-medium text-orange-900 mb-3 flex items-center">
+              <Calendar className="h-4 w-4 mr-2" />
+              Implementation Timeline & Deliverables
+            </h3>
+            <div className="space-y-3">
+              {/* Project Phases */}
+              {Array.isArray(projectPhases) && projectPhases.length > 0 ? (
+                <div>
+                  <h4 className="font-medium text-orange-900 mb-2">Project Phases</h4>
+                  {projectPhases.map((phase, index) => (
+                    <div key={index} className="bg-white rounded p-3 mb-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-medium text-orange-900">{phase.phase || phase.name || `Phase ${index + 1}`}</div>
+                          <div className="text-sm text-orange-700 mt-1">{phase.description || phase.deliverables || 'Phase deliverables and activities'}</div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <div className="text-sm font-medium text-orange-900">{phase.duration || phase.timeline || 'TBD'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : proposal.implementation_plan ? (
+                <div className="bg-white rounded p-4">
+                  <h4 className="font-medium text-orange-900 mb-2">Implementation Plan</h4>
+                  <p className="text-sm text-orange-800">{proposal.implementation_plan}</p>
+                </div>
+              ) : null}
+
+              {/* Key Milestones */}
+              {Array.isArray(keyMilestones) && keyMilestones.length > 0 ? (
+                <div>
+                  <h4 className="font-medium text-orange-900 mb-2">Key Milestones</h4>
+                  {keyMilestones.map((milestone, index) => (
+                    <div key={index} className="bg-white rounded p-3 mb-2">
+                      <div className="flex justify-between items-center">
+                        <div className="font-medium text-orange-900">{milestone.name || milestone.title || `Milestone ${index + 1}`}</div>
+                        <div className="text-sm text-orange-700">{milestone.date || milestone.timeline || 'TBD'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {/* Delivery Timeline */}
+              {proposal.delivery_timeline && (
+                <div className="bg-white rounded p-4">
+                  <h4 className="font-medium text-orange-900 mb-2">Delivery Timeline</h4>
+                  <p className="text-sm text-orange-800">{proposal.delivery_timeline}</p>
+                </div>
+              )}
+
+              {!projectPhases?.length && !keyMilestones?.length && !proposal.implementation_plan && !proposal.delivery_timeline && (
+                <div className="bg-white rounded p-4">
+                  <p className="text-sm text-orange-800">Implementation timeline and deliverables will be defined during proposal generation.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Risk Assessment & Mitigation */}
+          <div className="bg-red-50 rounded-lg p-4">
+            <h3 className="font-medium text-red-900 mb-3 flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Risk Assessment & Mitigation
+            </h3>
+            {riskMitigation && Object.keys(riskMitigation).length > 0 ? (
+              <div className="space-y-3">
+                {Object.entries(riskMitigation).map(([riskType, mitigation], index) => (
+                  <div key={index} className="bg-white rounded p-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-medium text-red-900">{riskType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                        <div className="text-sm text-red-700 mt-1">{mitigation}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : proposal.risk_mitigation ? (
+              <div className="bg-white rounded p-4">
+                <p className="text-sm text-red-800">{proposal.risk_mitigation}</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded p-4">
+                <p className="text-sm text-red-800">Risk assessment and mitigation strategies will be defined during proposal generation.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Proposal Metadata */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+              <Brain className="h-4 w-4 mr-2" />
+              Proposal Metadata
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-gray-600 mb-1">Generated</div>
+                <div className="font-medium text-gray-900">
+                  {proposal.generated_at
+                    ? new Date(proposal.generated_at).toLocaleDateString()
+                    : 'TBD'
+                  }
+                </div>
+              </div>
+              {proposal.approved_at && (
+                <div>
+                  <div className="text-sm text-gray-600 mb-1">Approved</div>
+                  <div className="font-medium text-gray-900">
+                    {new Date(proposal.approved_at).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+              {proposal.sent_at && (
+                <div>
+                  <div className="text-sm text-gray-600 mb-1">Sent to Client</div>
+                  <div className="font-medium text-gray-900">
+                    {new Date(proposal.sent_at).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+              {proposal.cso_approval !== null && (
+                <div>
+                  <div className="text-sm text-gray-600 mb-1">CSO Approval</div>
+                  <div className={`font-medium ${proposal.cso_approval ? 'text-green-700' : 'text-red-700'}`}>
+                    {proposal.cso_approval ? 'Approved' : 'Pending'}
+                  </div>
+                </div>
+              )}
+            </div>
+            {proposal.cso_review_notes && (
+              <div className="mt-4 bg-white rounded p-3">
+                <div className="text-sm text-gray-600 mb-1">CSO Review Notes</div>
+                <div className="text-sm text-gray-800">{proposal.cso_review_notes}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Proposal Generated Yet</h3>
+          <p className="text-gray-500 mb-4">Generate an AI-powered commercial proposal for this deal</p>
+          <button
+            onClick={triggerAIInsight}
+            disabled={loading}
+            className={`px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <FileText className="h-5 w-5" />
+            {loading ? 'Generating Proposal...' : 'Generate Commercial Proposal'}
           </button>
         </div>
       )}
