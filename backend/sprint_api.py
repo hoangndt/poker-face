@@ -23,6 +23,7 @@ from ai_agents.lead_qualification_agent import LeadQualificationAgent
 from ai_agents.solution_design_agent import SolutionDesignAgent
 from ai_agents.delivery_planning_agent import DeliveryPlanningAgent
 from ai_agents.proposal_generation_agent import ProposalGenerationAgent
+from ai_agents.campaign_builder_agent import CampaignBuilderAgent
 
 router = APIRouter(prefix="/api/sprint", tags=["sprint"])
 
@@ -1920,3 +1921,191 @@ def get_campaign_trends(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching campaign trends: {str(e)}")
+
+
+# AI Campaign Builder Endpoints
+
+@router.get("/campaigns/historical-analysis")
+def get_historical_analysis(
+    date_range: Optional[str] = "90d",
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze historical campaign data to identify patterns and insights for campaign planning.
+    """
+    try:
+        # Get campaign analytics data
+        campaign_analytics = get_campaign_analytics(date_range=date_range, db=db)
+
+        # Initialize Campaign Builder Agent
+        campaign_builder = CampaignBuilderAgent()
+
+        # Analyze historical data
+        historical_analysis = campaign_builder.analyze_historical_data(campaign_analytics)
+
+        return {
+            "historical_analysis": historical_analysis,
+            "data_period": date_range,
+            "analysis_timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing historical data: {str(e)}")
+
+
+@router.post("/campaigns/ai-suggestions")
+def generate_ai_campaign_suggestions(
+    campaign_goals: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate AI-powered campaign recommendations based on goals and historical data.
+
+    Expected campaign_goals format:
+    {
+        "campaign_type": "Lead Generation",
+        "target_solution": "Web Application",
+        "budget_min": 10000,
+        "budget_max": 50000,
+        "timeline": "3 months",
+        "lead_target": 100,
+        "revenue_target": 500000,
+        "geographic_focus": "North America",
+        "target_audience": "B2B Technology Companies"
+    }
+    """
+    try:
+        # Validate required fields
+        required_fields = ['campaign_type', 'budget_max', 'lead_target']
+        for field in required_fields:
+            if field not in campaign_goals:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+        # Get historical analysis
+        date_range = "90d"  # Use 90 days for campaign planning
+        campaign_analytics = get_campaign_analytics(date_range=date_range, db=db)
+
+        # Initialize Campaign Builder Agent
+        campaign_builder = CampaignBuilderAgent()
+
+        # Analyze historical data
+        historical_analysis = campaign_builder.analyze_historical_data(campaign_analytics)
+
+        # Generate campaign recommendations
+        recommendations = campaign_builder.generate_campaign_recommendations(
+            campaign_goals, historical_analysis
+        )
+
+        return {
+            "campaign_goals": campaign_goals,
+            "historical_analysis": historical_analysis,
+            "recommendations": recommendations,
+            "generation_timestamp": datetime.now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating campaign suggestions: {str(e)}")
+
+
+@router.post("/campaigns/generate-template")
+def generate_campaign_template(
+    template_request: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a comprehensive campaign template based on recommendations and goals.
+
+    Expected template_request format:
+    {
+        "campaign_goals": { ... },
+        "recommendations": { ... }
+    }
+    """
+    try:
+        # Validate required fields
+        if 'campaign_goals' not in template_request:
+            raise HTTPException(status_code=400, detail="Missing required field: campaign_goals")
+        if 'recommendations' not in template_request:
+            raise HTTPException(status_code=400, detail="Missing required field: recommendations")
+
+        campaign_goals = template_request['campaign_goals']
+        recommendations = template_request['recommendations']
+
+        # Initialize Campaign Builder Agent
+        campaign_builder = CampaignBuilderAgent()
+
+        # Create campaign template
+        campaign_template = campaign_builder.create_campaign_template(
+            recommendations, campaign_goals
+        )
+
+        return {
+            "campaign_template": campaign_template,
+            "template_timestamp": datetime.now().isoformat(),
+            "template_version": "1.0"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating campaign template: {str(e)}")
+
+
+@router.get("/campaigns/builder-data")
+def get_campaign_builder_data(db: Session = Depends(get_db)):
+    """
+    Get reference data for the campaign builder including available sources, solutions, and templates.
+    """
+    try:
+        # Get available lead sources and solutions from existing contacts
+        contacts = db.query(Contact).all()
+
+        # Extract unique lead sources and solutions
+        lead_sources = list(set([c.lead_source for c in contacts if c.lead_source]))
+        solution_types = list(set([c.solution_interest for c in contacts if c.solution_interest]))
+
+        # Get campaign performance summary
+        campaign_analytics = get_campaign_analytics(date_range="90d", db=db)
+
+        return {
+            "available_lead_sources": sorted(lead_sources),
+            "available_solution_types": sorted(solution_types),
+            "campaign_types": [
+                "Lead Generation",
+                "Brand Awareness",
+                "Product Launch",
+                "Customer Retention",
+                "Market Expansion",
+                "Thought Leadership",
+                "Event Marketing",
+                "Content Marketing"
+            ],
+            "budget_ranges": [
+                {"label": "Small ($5K - $15K)", "min": 5000, "max": 15000},
+                {"label": "Medium ($15K - $50K)", "min": 15000, "max": 50000},
+                {"label": "Large ($50K - $150K)", "min": 50000, "max": 150000},
+                {"label": "Enterprise ($150K+)", "min": 150000, "max": 500000}
+            ],
+            "timeline_options": [
+                "1 month",
+                "2 months",
+                "3 months",
+                "6 months",
+                "12 months"
+            ],
+            "geographic_options": [
+                "Global",
+                "North America",
+                "Europe",
+                "Asia Pacific",
+                "Latin America",
+                "Specific Country"
+            ],
+            "performance_summary": campaign_analytics.get('summary', {}),
+            "data_timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campaign builder data: {str(e)}")

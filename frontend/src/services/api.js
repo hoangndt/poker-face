@@ -79,6 +79,12 @@ export const sprintAPI = {
   getCampaignAnalytics: (params = {}) => api.get('/sprint/campaigns/analytics', { params }),
   getCampaignSourceMetrics: (params = {}) => api.get('/sprint/campaigns/source-metrics', { params }),
   getCampaignTrends: (params = {}) => api.get('/sprint/campaigns/trends', { params }),
+
+  // AI Campaign Builder
+  getCampaignBuilderData: () => api.get('/sprint/campaigns/builder-data'),
+  getHistoricalAnalysis: (params = {}) => api.get('/sprint/campaigns/historical-analysis', { params }),
+  generateAICampaignSuggestions: (campaignGoals) => api.post('/sprint/campaigns/ai-suggestions', campaignGoals),
+  generateCampaignTemplate: (templateRequest) => api.post('/sprint/campaigns/generate-template', templateRequest),
 };
 
 // Pipeline API calls
