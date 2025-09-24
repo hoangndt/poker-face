@@ -11,6 +11,7 @@ import json
 
 from database import get_db, engine
 from models import CustomerData, LifecycleStage, CustomerActivity, ChurnPredictions, RevenueForecastData
+from sprint_models import Deal
 from schemas import (
     CustomerResponse, 
     LifecycleAnalytics,
@@ -185,53 +186,96 @@ async def get_churn_prediction(customer_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/ai/train-models")
 async def train_ai_models(db: Session = Depends(get_db)):
-    """Train all AI models with current customer data"""
+    """Train all AI models with current data"""
     try:
-        # Get all customers for training
-        customers = db.query(CustomerData).all()
-        
-        if len(customers) < 10:
-            raise HTTPException(
-                status_code=400, 
-                detail="Need at least 10 customers to train the model"
-            )
-        
-        # Check if we have both churned and non-churned customers
-        churned_customers = [c for c in customers if c.Churn_Flag]
-        active_customers = [c for c in customers if not c.Churn_Flag]
-        
-        if len(churned_customers) == 0 or len(active_customers) == 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Need both churned and active customers to train the model"
-            )
-        
-        # Train churn prediction model
-        churn_predictor.train(customers)
-        
-        # Train revenue forecasting model (if available)
+        models_trained = []
+        training_results = {}
+
+        # Train revenue forecasting model with Deal data
         try:
-            revenue_forecaster.train(customers)
+            deals = db.query(Deal).all()
+            if len(deals) >= 10:
+                training_deals = [d for d in deals if d.estimated_value and d.deal_probability is not None]
+                if len(training_deals) >= 10:
+                    revenue_forecaster.train(training_deals)
+                    models_trained.append("revenue_forecaster")
+                    training_results["revenue_forecaster"] = {
+                        "status": "success",
+                        "total_deals": len(deals),
+                        "training_deals": len(training_deals),
+                        "is_trained": revenue_forecaster.is_trained
+                    }
+                else:
+                    training_results["revenue_forecaster"] = {
+                        "status": "insufficient_data",
+                        "message": f"Need at least 10 deals with estimated_value and deal_probability (found {len(training_deals)})"
+                    }
+            else:
+                training_results["revenue_forecaster"] = {
+                    "status": "insufficient_data",
+                    "message": f"Need at least 10 deals (found {len(deals)})"
+                }
         except Exception as e:
-            print(f"Warning: Could not train revenue forecaster: {e}")
-        
-        # Train lead scoring model (if available)
+            training_results["revenue_forecaster"] = {
+                "status": "error",
+                "message": f"Could not train revenue forecaster: {e}"
+            }
+
+        # Try to train churn prediction model (if CustomerData table exists)
         try:
-            lead_scorer.train(customers)
+            customers = db.query(CustomerData).all()
+            if len(customers) >= 10:
+                churned_customers = [c for c in customers if c.Churn_Flag]
+                active_customers = [c for c in customers if not c.Churn_Flag]
+
+                if len(churned_customers) > 0 and len(active_customers) > 0:
+                    churn_predictor.train(customers)
+                    models_trained.append("churn_predictor")
+                    training_results["churn_predictor"] = {
+                        "status": "success",
+                        "total_customers": len(customers),
+                        "churned_customers": len(churned_customers),
+                        "active_customers": len(active_customers),
+                        "is_trained": churn_predictor.is_trained
+                    }
+                else:
+                    training_results["churn_predictor"] = {
+                        "status": "insufficient_data",
+                        "message": "Need both churned and active customers"
+                    }
+            else:
+                training_results["churn_predictor"] = {
+                    "status": "insufficient_data",
+                    "message": f"Need at least 10 customers (found {len(customers)})"
+                }
         except Exception as e:
-            print(f"Warning: Could not train lead scorer: {e}")
-        
+            training_results["churn_predictor"] = {
+                "status": "not_available",
+                "message": "CustomerData table not available (using Deal-based system)"
+            }
+
+        # Try to train lead scoring model
+        try:
+            if 'customers' in locals() and customers:
+                lead_scorer.train(customers)
+                models_trained.append("lead_scorer")
+                training_results["lead_scorer"] = {
+                    "status": "success",
+                    "is_trained": lead_scorer.is_trained
+                }
+        except Exception as e:
+            training_results["lead_scorer"] = {
+                "status": "error",
+                "message": f"Could not train lead scorer: {e}"
+            }
+
         return {
-            "message": "Models trained successfully",
-            "total_customers": len(customers),
-            "churned_customers": len(churned_customers),
-            "active_customers": len(active_customers),
-            "models_trained": ["churn_predictor"],
+            "message": f"Training completed. Models trained: {', '.join(models_trained) if models_trained else 'none'}",
+            "models_trained": models_trained,
+            "training_results": training_results,
             "training_timestamp": datetime.utcnow().isoformat()
         }
-        
-    except HTTPException:
-        raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error training models: {str(e)}")
 
@@ -239,29 +283,58 @@ async def train_ai_models(db: Session = Depends(get_db)):
 async def get_model_status(db: Session = Depends(get_db)):
     """Get the training status of AI models"""
     try:
-        # Count customers
-        total_customers = db.query(CustomerData).count()
-        churned_customers = db.query(CustomerData).filter(CustomerData.Churn_Flag == True).count()
-        active_customers = db.query(CustomerData).filter(CustomerData.Churn_Flag == False).count()
-        
+        # Count deals for revenue forecaster
+        total_deals = db.query(Deal).count()
+        closed_deals = db.query(Deal).filter(Deal.deal_stage.in_(['Closed Won', 'Closed Lost'])).count()
+        pipeline_deals = db.query(Deal).filter(~Deal.deal_stage.in_(['Closed Won', 'Closed Lost'])).count()
+        training_deals = db.query(Deal).filter(Deal.estimated_value.isnot(None), Deal.deal_probability.isnot(None)).count()
+
+        # Try to count customers (may not exist)
+        total_customers = 0
+        churned_customers = 0
+        active_customers = 0
+        customer_data_available = False
+
+        try:
+            total_customers = db.query(CustomerData).count()
+            churned_customers = db.query(CustomerData).filter(CustomerData.Churn_Flag == True).count()
+            active_customers = db.query(CustomerData).filter(CustomerData.Churn_Flag == False).count()
+            customer_data_available = True
+        except Exception:
+            customer_data_available = False
+
         return {
             "churn_predictor": {
                 "is_trained": churn_predictor.is_trained,
-                "feature_importance": churn_predictor.feature_importance if churn_predictor.is_trained else {}
+                "feature_importance": churn_predictor.feature_importance if churn_predictor.is_trained else {},
+                "data_available": customer_data_available
+            },
+            "revenue_forecaster": {
+                "is_trained": revenue_forecaster.is_trained,
+                "feature_importance": revenue_forecaster.feature_importance if revenue_forecaster.is_trained else {},
+                "data_available": True
             },
             "data_summary": {
                 "total_customers": total_customers,
                 "churned_customers": churned_customers,
                 "active_customers": active_customers,
-                "can_train": total_customers >= 10 and churned_customers > 0 and active_customers > 0
+                "customer_data_available": customer_data_available,
+                "total_deals": total_deals,
+                "closed_deals": closed_deals,
+                "pipeline_deals": pipeline_deals,
+                "training_deals": training_deals,
+                "can_train_churn": customer_data_available and total_customers >= 10 and churned_customers > 0 and active_customers > 0,
+                "can_train_revenue": training_deals >= 10
             },
             "recommendations": [
-                "Use POST /api/ai/train-models to train the models" if not churn_predictor.is_trained else "Models are trained and ready",
-                f"Current data: {total_customers} total customers ({churned_customers} churned, {active_customers} active)",
-                "Need at least 10 customers with both churned and active examples to train"
+                "Revenue forecaster is ready" if revenue_forecaster.is_trained else "Use POST /api/ai/train-models to train the revenue forecasting model",
+                "Churn predictor not available (using Deal-based system)" if not customer_data_available else ("Churn predictor is ready" if churn_predictor.is_trained else "Train churn predictor with customer data"),
+                f"Deal data: {total_deals} total deals ({closed_deals} closed, {pipeline_deals} in pipeline, {training_deals} suitable for training)",
+                f"Customer data: {'Available' if customer_data_available else 'Not available'} ({total_customers} customers)" if customer_data_available else "Customer data: Not available (using Deal-based revenue forecasting)",
+                "Need at least 10 deals with estimated_value and deal_probability to train revenue model"
             ]
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting model status: {str(e)}")
 
@@ -327,21 +400,34 @@ async def get_churn_risk_customers(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting risk customers: {str(e)}")
 
-@app.get("/api/ai/revenue-forecast", response_model=RevenueForecast)
+@app.get("/api/ai/revenue-forecast")
 async def get_revenue_forecast(
     months_ahead: int = 12,
     db: Session = Depends(get_db)
 ):
-    """Get revenue forecast for specified months ahead"""
+    """Get revenue forecast for specified months ahead based on current deals"""
     try:
-        # Get historical data
-        historical_data = crud.get_historical_revenue(db)
-        
-        # Generate forecast
-        forecast = revenue_forecaster.forecast_revenue(historical_data, months_ahead)
-        
+        # Get all deals for forecasting
+        deals = db.query(Deal).all()
+
+        if not deals:
+            return {
+                "forecast_period": f"{months_ahead} months",
+                "predicted_revenue": 0,
+                "confidence_interval_lower": 0,
+                "confidence_interval_upper": 0,
+                "monthly_forecast": [],
+                "pipeline_deals_count": 0,
+                "total_pipeline_value": 0,
+                "model_status": "no_data",
+                "message": "No deals found in database"
+            }
+
+        # Generate forecast using updated model
+        forecast = revenue_forecaster.forecast(months_ahead, deals)
+
         return forecast
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error forecasting revenue: {str(e)}")
 

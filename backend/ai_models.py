@@ -182,90 +182,226 @@ class RevenueForecaster:
         self.model = RandomForestRegressor(n_estimators=100, random_state=42)
         self.scaler = StandardScaler()
         self.is_trained = False
-        
-    def train(self, customers):
-        """Train revenue forecasting model"""
-        if not customers:
+        self.feature_importance = {}
+
+    def train(self, deals):
+        """Train revenue forecasting model using Deal data"""
+        if not deals:
             return
-            
-        # Prepare time-series features
-        X, y = self._prepare_revenue_features(customers)
-        
+
+        # Prepare features from deals
+        X, y = self._prepare_deal_features(deals)
+
         if len(X) < 10:  # Need sufficient data
+            print(f"Not enough data for training: {len(X)} samples (need at least 10)")
             return
-            
+
         X_scaled = self.scaler.fit_transform(X)
-        
+
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
             X_scaled, y, test_size=0.2, random_state=42
         )
-        
+
         # Train model
         self.model.fit(X_train, y_train)
         self.is_trained = True
-        
+
+        # Store feature importance
+        feature_names = [
+            'estimated_value', 'deal_probability', 'velocity_encoded', 'stage_encoded',
+            'days_since_creation', 'region_encoded', 'has_assigned_person', 'implementation_time_encoded'
+        ]
+
+        self.feature_importance = dict(zip(
+            feature_names,
+            self.model.feature_importances_
+        ))
+
         # Evaluate
         y_pred = self.model.predict(X_test)
         mse = np.mean((y_test - y_pred) ** 2)
-        print(f"Revenue forecasting MSE: {mse:.2f}")
-    
-    def _prepare_revenue_features(self, customers):
-        """Prepare features for revenue forecasting"""
+        r2 = self.model.score(X_test, y_test)
+        print(f"Revenue forecasting MSE: {mse:.2f}, R²: {r2:.3f}")
+
+    def _prepare_deal_features(self, deals):
+        """Prepare features for revenue forecasting from Deal objects"""
         X = []
         y = []
-        
-        for customer in customers:
-            if customer.Forecasted_Revenue and customer.ACV_USD:
+
+        # Create encoders for categorical variables
+        velocities = ['Fast', 'Medium', 'Slow']
+        stages = ['Lead', 'Qualification', 'Discovery', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']
+        regions = ['North America', 'Europe', 'Asia-Pacific', 'Latin America', 'Middle East & Africa']
+        implementation_times = ['2-3 months', '3-4 months', '4-6 months', '6-8 months', '8-12 months', '12-18 months', '18-24 months', '2-3 years']
+
+        for deal in deals:
+            if deal.estimated_value and deal.deal_probability is not None:
+                # Calculate days since creation
+                if deal.created_at:
+                    days_since_creation = (datetime.now() - deal.created_at).days
+                else:
+                    days_since_creation = 0
+
+                # Encode categorical variables
+                velocity_encoded = velocities.index(deal.velocity) if deal.velocity in velocities else 1  # Default to Medium
+                stage_encoded = stages.index(deal.deal_stage) if deal.deal_stage in stages else 0  # Default to Lead
+                region_encoded = regions.index(deal.region) if deal.region in regions else 0  # Default to North America
+                implementation_time_encoded = implementation_times.index(deal.implementation_time) if deal.implementation_time in implementation_times else 2  # Default to 4-6 months
+
                 features = [
-                    customer.Lead_Score or 0,
-                    customer.Stage_Probability or 0,
-                    customer.Sales_Cycle_Days or 0,
-                    customer.Company_Size or 0,
-                    1 if customer.Customer_Flag else 0,
-                    customer.Customer_Tenure_Months or 0,
-                    customer.Renewals_Count or 0
+                    deal.estimated_value,
+                    deal.deal_probability / 100.0,  # Normalize to 0-1
+                    velocity_encoded,
+                    stage_encoded,
+                    days_since_creation,
+                    region_encoded,
+                    1 if deal.assigned_person_id else 0,
+                    implementation_time_encoded
                 ]
+
                 X.append(features)
-                y.append(customer.Forecasted_Revenue)
-                
+                # Target is the weighted amount (estimated_value * probability)
+                y.append(deal.estimated_value * (deal.deal_probability / 100.0))
+
         return np.array(X), np.array(y)
     
-    def forecast(self, months_ahead: int, db):
-        """Generate revenue forecast"""
+    def forecast(self, months_ahead: int, deals):
+        """Generate revenue forecast based on current pipeline"""
         if not self.is_trained:
-            return {
-                "forecast_period": f"{months_ahead} months",
-                "predicted_revenue": 0,
-                "confidence_interval_lower": 0,
-                "confidence_interval_upper": 0,
-                "monthly_forecast": [],
-                "growth_rate": 0,
-                "seasonality_factors": {}
-            }
-        
-        # This is a simplified forecast - in production, you'd use more sophisticated time series analysis
-        base_revenue = 100000  # Base monthly revenue
-        growth_rate = 0.05  # 5% monthly growth
-        
+            # Fallback to simple calculation based on current pipeline
+            return self._simple_pipeline_forecast(deals, months_ahead)
+
+        # Get current pipeline deals (not closed)
+        pipeline_deals = [d for d in deals if d.deal_stage not in ['Closed Won', 'Closed Lost']]
+
+        if not pipeline_deals:
+            return self._simple_pipeline_forecast(deals, months_ahead)
+
+        # Prepare features for pipeline deals
+        X_pipeline, _ = self._prepare_deal_features(pipeline_deals)
+
+        if len(X_pipeline) == 0:
+            return self._simple_pipeline_forecast(deals, months_ahead)
+
+        # Scale features
+        X_pipeline_scaled = self.scaler.transform(X_pipeline)
+
+        # Predict weighted amounts for pipeline deals
+        predicted_weighted_amounts = self.model.predict(X_pipeline_scaled)
+
+        # Calculate monthly distribution based on expected close dates and deal velocity
         monthly_forecast = []
+        total_predicted = 0
+
         for month in range(1, months_ahead + 1):
-            predicted = base_revenue * (1 + growth_rate) ** month
+            month_revenue = 0
+            current_date = datetime.now()
+            target_date = current_date + timedelta(days=30 * month)
+
+            for i, deal in enumerate(pipeline_deals):
+                # Estimate probability of closing in this month based on deal characteristics
+                close_probability = self._calculate_monthly_close_probability(deal, month, target_date)
+                month_revenue += predicted_weighted_amounts[i] * close_probability
+
+            monthly_forecast.append({
+                "month": month,
+                "predicted_revenue": month_revenue,
+                "period": target_date.strftime("%Y-%m")
+            })
+            total_predicted += month_revenue
+
+        # Calculate confidence intervals based on model performance
+        confidence_factor = 0.15  # 15% confidence interval
+
+        return {
+            "forecast_period": f"{months_ahead} months",
+            "predicted_revenue": total_predicted,
+            "confidence_interval_lower": total_predicted * (1 - confidence_factor),
+            "confidence_interval_upper": total_predicted * (1 + confidence_factor),
+            "monthly_forecast": monthly_forecast,
+            "pipeline_deals_count": len(pipeline_deals),
+            "total_pipeline_value": sum(d.estimated_value for d in pipeline_deals if d.estimated_value),
+            "feature_importance": self.feature_importance,
+            "seasonality_factors": {
+                "Q1": 0.9, "Q2": 1.1, "Q3": 0.95, "Q4": 1.15
+            }
+        }
+
+    def _calculate_monthly_close_probability(self, deal, month, target_date):
+        """Calculate probability of deal closing in a specific month"""
+        # Base probability from deal probability
+        base_prob = (deal.deal_probability or 0) / 100.0
+
+        # Adjust based on deal velocity
+        velocity_multiplier = {
+            'Fast': 1.5,
+            'Medium': 1.0,
+            'Slow': 0.6
+        }.get(deal.velocity, 1.0)
+
+        # Adjust based on deal stage
+        stage_multiplier = {
+            'Lead': 0.1,
+            'Qualification': 0.2,
+            'Discovery': 0.3,
+            'Proposal': 0.6,
+            'Negotiation': 0.8,
+            'Closed Won': 0.0,  # Already closed
+            'Closed Lost': 0.0  # Already closed
+        }.get(deal.deal_stage, 0.3)
+
+        # Time decay - deals are more likely to close sooner
+        time_decay = max(0.1, 1.0 - (month - 1) * 0.1)
+
+        # Expected close date influence
+        if deal.expected_close_date:
+            days_to_expected = (deal.expected_close_date - datetime.now()).days
+            expected_month = max(1, days_to_expected // 30)
+            if month == expected_month:
+                time_decay *= 2.0  # Higher probability in expected month
+
+        return min(1.0, base_prob * velocity_multiplier * stage_multiplier * time_decay)
+
+    def _simple_pipeline_forecast(self, deals, months_ahead):
+        """Simple fallback forecast when model is not trained"""
+        # Calculate current pipeline value
+        pipeline_deals = [d for d in deals if d.deal_stage not in ['Closed Won', 'Closed Lost']]
+        total_pipeline = sum(d.estimated_value * (d.deal_probability / 100.0) for d in pipeline_deals if d.estimated_value and d.deal_probability)
+
+        # Historical monthly revenue from closed deals
+        closed_deals = [d for d in deals if d.deal_stage == 'Closed Won' and d.actual_close_date]
+        if closed_deals:
+            # Calculate average monthly revenue from last 12 months
+            recent_deals = [d for d in closed_deals if d.actual_close_date and (datetime.now() - d.actual_close_date).days <= 365]
+            monthly_avg = sum(d.estimated_value for d in recent_deals if d.estimated_value) / 12 if recent_deals else 0
+        else:
+            monthly_avg = total_pipeline / (months_ahead * 4)  # Assume 25% conversion per month
+
+        # Simple growth assumption
+        growth_rate = 0.02  # 2% monthly growth
+
+        monthly_forecast = []
+        total_predicted = 0
+
+        for month in range(1, months_ahead + 1):
+            predicted = monthly_avg * (1 + growth_rate) ** month
             monthly_forecast.append({
                 "month": month,
                 "predicted_revenue": predicted,
                 "period": (datetime.now() + timedelta(days=30*month)).strftime("%Y-%m")
             })
-        
-        total_predicted = sum([m["predicted_revenue"] for m in monthly_forecast])
-        
+            total_predicted += predicted
+
         return {
             "forecast_period": f"{months_ahead} months",
             "predicted_revenue": total_predicted,
-            "confidence_interval_lower": total_predicted * 0.85,
-            "confidence_interval_upper": total_predicted * 1.15,
+            "confidence_interval_lower": total_predicted * 0.7,
+            "confidence_interval_upper": total_predicted * 1.3,
             "monthly_forecast": monthly_forecast,
-            "growth_rate": growth_rate,
+            "pipeline_deals_count": len(pipeline_deals),
+            "total_pipeline_value": sum(d.estimated_value for d in pipeline_deals if d.estimated_value),
+            "model_status": "untrained",
             "seasonality_factors": {
                 "Q1": 0.9, "Q2": 1.1, "Q3": 0.95, "Q4": 1.15
             }
