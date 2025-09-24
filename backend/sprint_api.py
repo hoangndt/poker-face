@@ -1642,3 +1642,281 @@ async def get_customer_success_detail(deal_id: int, db: Session = Depends(get_db
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching customer success detail: {str(e)}")
+
+
+# Campaign Performance Analytics Endpoints
+
+@router.get("/campaigns/analytics")
+def get_campaign_analytics(
+    date_range: Optional[str] = "30d",
+    source_filter: Optional[str] = None,
+    solution_filter: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get comprehensive campaign performance analytics based on contact lead sources and solution interests.
+    """
+    try:
+        # Calculate date filter
+        end_date = datetime.now()
+        if date_range == "7d":
+            start_date = end_date - timedelta(days=7)
+        elif date_range == "30d":
+            start_date = end_date - timedelta(days=30)
+        elif date_range == "90d":
+            start_date = end_date - timedelta(days=90)
+        elif date_range == "1y":
+            start_date = end_date - timedelta(days=365)
+        else:
+            start_date = end_date - timedelta(days=30)  # Default to 30 days
+
+        # Base query for contacts
+        query = db.query(Contact).filter(Contact.created_at >= start_date)
+
+        # Apply filters
+        if source_filter:
+            query = query.filter(Contact.lead_source == source_filter)
+        if solution_filter:
+            query = query.filter(Contact.solution_interest == solution_filter)
+
+        contacts = query.all()
+
+        # Group by lead source
+        source_metrics = {}
+        for contact in contacts:
+            source = contact.lead_source or "Unknown"
+            if source not in source_metrics:
+                source_metrics[source] = {
+                    "source": source,
+                    "total_leads": 0,
+                    "qualified_leads": 0,
+                    "deals": 0,
+                    "total_revenue": 0,
+                    "contacts": []
+                }
+
+            source_metrics[source]["total_leads"] += 1
+            source_metrics[source]["contacts"].append(contact)
+
+            # Check if qualified
+            if contact.status in ["qualified_solution", "qualified_delivery", "qualified_cso", "deal", "project"]:
+                source_metrics[source]["qualified_leads"] += 1
+
+            # Check if deal
+            if contact.status in ["deal", "project"]:
+                source_metrics[source]["deals"] += 1
+
+            # Add revenue
+            if contact.estimated_revenue:
+                source_metrics[source]["total_revenue"] += contact.estimated_revenue
+
+        # Calculate conversion rates and other metrics
+        for source, metrics in source_metrics.items():
+            total = metrics["total_leads"]
+            qualified = metrics["qualified_leads"]
+            deals = metrics["deals"]
+            revenue = metrics["total_revenue"]
+
+            metrics["conversion_rate"] = (qualified / total * 100) if total > 0 else 0
+            metrics["deal_conversion_rate"] = (deals / total * 100) if total > 0 else 0
+            metrics["avg_deal_size"] = (revenue / deals) if deals > 0 else 0
+            metrics["cost_per_lead"] = 0  # Would need cost data
+            metrics["roi"] = 0  # Would need cost data
+
+            # Remove contacts list from response
+            del metrics["contacts"]
+
+        # Group by solution interest
+        solution_metrics = {}
+        for contact in contacts:
+            solution = contact.solution_interest or "Unknown"
+            if solution not in solution_metrics:
+                solution_metrics[solution] = {
+                    "solution": solution,
+                    "leads": 0,
+                    "revenue": 0
+                }
+
+            solution_metrics[solution]["leads"] += 1
+            if contact.estimated_revenue:
+                solution_metrics[solution]["revenue"] += contact.estimated_revenue
+
+        # Calculate percentages
+        total_contacts = len(contacts)
+        for solution, metrics in solution_metrics.items():
+            metrics["percentage"] = (metrics["leads"] / total_contacts * 100) if total_contacts > 0 else 0
+
+        # Generate trend data (mock for now - would need historical data)
+        trend_data = []
+        for i in range(6):
+            month_date = end_date - timedelta(days=30 * i)
+            month_name = month_date.strftime("%b")
+
+            # Mock data - in real implementation, query historical data
+            trend_data.append({
+                "month": month_name,
+                "leads": len(contacts) // 6 + (i * 2),
+                "qualified": len([c for c in contacts if c.status in ["qualified_solution", "qualified_delivery", "qualified_cso", "deal", "project"]]) // 6,
+                "deals": len([c for c in contacts if c.status in ["deal", "project"]]) // 6,
+                "revenue": sum(c.estimated_revenue or 0 for c in contacts) // 6
+            })
+
+        trend_data.reverse()  # Chronological order
+
+        # Summary metrics
+        total_revenue = sum(c.estimated_revenue or 0 for c in contacts)
+        qualified_contacts = [c for c in contacts if c.status in ["qualified_solution", "qualified_delivery", "qualified_cso", "deal", "project"]]
+        avg_conversion_rate = sum(m["conversion_rate"] for m in source_metrics.values()) / len(source_metrics) if source_metrics else 0
+        top_source = max(source_metrics.values(), key=lambda x: x["total_leads"])["source"] if source_metrics else "N/A"
+
+        return {
+            "source_metrics": list(source_metrics.values()),
+            "solution_metrics": list(solution_metrics.values()),
+            "trend_data": trend_data,
+            "summary": {
+                "total_leads": total_contacts,
+                "total_revenue": total_revenue,
+                "avg_conversion_rate": avg_conversion_rate,
+                "top_source": top_source,
+                "date_range": date_range,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat()
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campaign analytics: {str(e)}")
+
+
+@router.get("/campaigns/source-metrics")
+def get_campaign_source_metrics(
+    source: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get detailed metrics for a specific lead source or all sources.
+    """
+    try:
+        query = db.query(Contact)
+        if source:
+            query = query.filter(Contact.lead_source == source)
+
+        contacts = query.all()
+
+        # Group by source and calculate detailed metrics
+        source_details = {}
+        for contact in contacts:
+            src = contact.lead_source or "Unknown"
+            if src not in source_details:
+                source_details[src] = {
+                    "source": src,
+                    "contacts": [],
+                    "by_status": {},
+                    "by_solution": {},
+                    "monthly_breakdown": {}
+                }
+
+            source_details[src]["contacts"].append({
+                "id": contact.id,
+                "full_name": contact.full_name,
+                "company_name": contact.company_name,
+                "status": contact.status,
+                "solution_interest": contact.solution_interest,
+                "estimated_revenue": contact.estimated_revenue,
+                "created_at": contact.created_at
+            })
+
+            # Status breakdown
+            status = contact.status or "unknown"
+            source_details[src]["by_status"][status] = source_details[src]["by_status"].get(status, 0) + 1
+
+            # Solution breakdown
+            solution = contact.solution_interest or "Unknown"
+            source_details[src]["by_solution"][solution] = source_details[src]["by_solution"].get(solution, 0) + 1
+
+            # Monthly breakdown
+            month = contact.created_at.strftime("%Y-%m") if contact.created_at else "unknown"
+            source_details[src]["monthly_breakdown"][month] = source_details[src]["monthly_breakdown"].get(month, 0) + 1
+
+        return source_details
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching source metrics: {str(e)}")
+
+
+@router.get("/campaigns/trends")
+def get_campaign_trends(
+    period: Optional[str] = "monthly",
+    months: Optional[int] = 12,
+    db: Session = Depends(get_db)
+):
+    """
+    Get campaign performance trends over time.
+    """
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30 * months)
+
+        contacts = db.query(Contact).filter(
+            Contact.created_at >= start_date,
+            Contact.created_at <= end_date
+        ).all()
+
+        # Group by time period
+        trends = {}
+        for contact in contacts:
+            if not contact.created_at:
+                continue
+
+            if period == "monthly":
+                period_key = contact.created_at.strftime("%Y-%m")
+            elif period == "weekly":
+                # Get week number
+                week_start = contact.created_at - timedelta(days=contact.created_at.weekday())
+                period_key = week_start.strftime("%Y-W%U")
+            else:  # daily
+                period_key = contact.created_at.strftime("%Y-%m-%d")
+
+            if period_key not in trends:
+                trends[period_key] = {
+                    "period": period_key,
+                    "total_leads": 0,
+                    "qualified_leads": 0,
+                    "deals": 0,
+                    "revenue": 0,
+                    "by_source": {},
+                    "by_solution": {}
+                }
+
+            trends[period_key]["total_leads"] += 1
+
+            if contact.status in ["qualified_solution", "qualified_delivery", "qualified_cso", "deal", "project"]:
+                trends[period_key]["qualified_leads"] += 1
+
+            if contact.status in ["deal", "project"]:
+                trends[period_key]["deals"] += 1
+
+            if contact.estimated_revenue:
+                trends[period_key]["revenue"] += contact.estimated_revenue
+
+            # Source breakdown
+            source = contact.lead_source or "Unknown"
+            trends[period_key]["by_source"][source] = trends[period_key]["by_source"].get(source, 0) + 1
+
+            # Solution breakdown
+            solution = contact.solution_interest or "Unknown"
+            trends[period_key]["by_solution"][solution] = trends[period_key]["by_solution"].get(solution, 0) + 1
+
+        # Sort by period
+        sorted_trends = sorted(trends.values(), key=lambda x: x["period"])
+
+        return {
+            "trends": sorted_trends,
+            "period": period,
+            "months": months,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campaign trends: {str(e)}")

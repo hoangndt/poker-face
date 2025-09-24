@@ -74,6 +74,11 @@ export const sprintAPI = {
   // Dashboard
   getDashboard: () => api.get('/sprint/dashboard'),
   getDashboardAnalytics: () => api.get('/sprint/dashboard/analytics'),
+
+  // Campaign Performance Analytics
+  getCampaignAnalytics: (params = {}) => api.get('/sprint/campaigns/analytics', { params }),
+  getCampaignSourceMetrics: (params = {}) => api.get('/sprint/campaigns/source-metrics', { params }),
+  getCampaignTrends: (params = {}) => api.get('/sprint/campaigns/trends', { params }),
 };
 
 // Pipeline API calls

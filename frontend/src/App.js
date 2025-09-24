@@ -20,6 +20,7 @@ import VietnamDashboard from "./components/VietnamDashboard";
 import SprintBoard from "./components/SprintBoard";
 import Contacts from "./components/Contacts";
 import CustomerSuccessPage from "./components/CustomerSuccessPage";
+import CampaignPerformance from "./components/CampaignPerformance";
 
 import "./App.css";
 
@@ -113,6 +114,19 @@ function App() {
             {/* Analytics Section */}
             <div className="border-t border-gray-200 my-2"></div>
             <NavLink
+              to="/campaign-performance"
+              className={({ isActive }) =>
+                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                }`
+              }
+            >
+              <Icon icon="solar:chart-square-bold-duotone" className="h-5 w-5" />
+              <span>Campaign Analytics</span>
+            </NavLink>
+            <NavLink
               to="/revenue-forecasting"
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
@@ -139,6 +153,7 @@ function App() {
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/contacts" element={<Contacts />} />
                 <Route path="/customer-success" element={<CustomerSuccessPage />} />
+                <Route path="/campaign-performance" element={<CampaignPerformance />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/churn-prediction" element={<ChurnPrediction />} />
                 <Route path="/revenue-forecasting" element={<RevenueForecasting />} />
