@@ -70,19 +70,6 @@ function App() {
               <span>Sale pipeline</span>
             </NavLink>
             <NavLink
-              to="/customers"
-              className={({ isActive }) =>
-                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                }`
-              }
-            >
-              <Icon icon="solar:users-group-two-rounded-bold-duotone" className="h-5 w-5" />
-              <span>Customers</span>
-            </NavLink>
-            <NavLink
               to="/contacts"
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
@@ -99,32 +86,6 @@ function App() {
             {/* Analytics Section */}
             <div className="border-t border-gray-200 my-2"></div>
             <NavLink
-              to="/analytics"
-              className={({ isActive }) =>
-                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                }`
-              }
-            >
-              <Icon icon="solar:graph-up-bold-duotone" className="h-5 w-5" />
-              <span>Analytics</span>
-            </NavLink>
-            <NavLink
-              to="/churn-prediction"
-              className={({ isActive }) =>
-                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                }`
-              }
-            >
-              <Icon icon="solar:danger-triangle-bold-duotone" className="h-5 w-5" />
-              <span>Churn Prediction</span>
-            </NavLink>
-            <NavLink
               to="/revenue-forecasting"
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
@@ -136,35 +97,6 @@ function App() {
             >
               <Icon icon="solar:dollar-minimalistic-bold-duotone" className="h-5 w-5" />
               <span>Revenue Forecast</span>
-            </NavLink>
-            <NavLink
-              to="/pipeline-health"
-              className={({ isActive }) =>
-                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                }`
-              }
-            >
-              <Icon icon="solar:pulse-2-bold-duotone" className="h-5 w-5" />
-              <span>Pipeline Health</span>
-            </NavLink>
-
-            {/* Special Dashboards */}
-            <div className="border-t border-gray-200 my-2"></div>
-            <NavLink
-              to="/vietnam-dashboard"
-              className={({ isActive }) =>
-                `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-green-600 text-white'
-                    : 'text-gray-700 hover:bg-green-50 hover:text-green-600'
-                }`
-              }
-            >
-              <Icon icon="solar:global-bold-duotone" className="h-5 w-5" />
-              <span>Vietnam Dashboard</span>
             </NavLink>
           </nav>
         </div>

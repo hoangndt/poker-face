@@ -284,32 +284,28 @@ const Dashboard = () => {
                         </div>
                         <div className="p-4 flex flex-col items-center justify-center h-full">
                             <div className="text-center">
-                                <div className="text-3xl font-bold text-teal-600 mb-2">
-                                  {analyticsData?.summary?.total_pipeline ? formatChartNumber(analyticsData.summary.total_pipeline) : '$3.6M'}
+                                <div className="text-3xl font-bold text-green-600 mb-2">
+                                  {analyticsData?.summary?.total_sales ? formatChartNumber(analyticsData.summary.total_sales) : '$4.2M'}
                                 </div>
-                                <div className="text-xs text-gray-500 mb-3">Stage</div>
+                                <div className="text-xs text-gray-500 mb-3">Closed Won</div>
                                 <div className="space-y-1">
                                     <div className="flex items-center text-xs">
-                                        <div className="w-2 h-2 bg-blue-500 rounded mr-2"></div>
-                                        <span>Prospecting</span>
-                                    </div>
-                                    <div className="flex items-center text-xs">
                                         <div className="w-2 h-2 bg-green-500 rounded mr-2"></div>
-                                        <span>Qualification</span>
+                                        <span>Closed Won</span>
                                     </div>
                                     <div className="flex items-center text-xs">
-                                        <div className="w-2 h-2 bg-yellow-500 rounded mr-2"></div>
-                                        <span>Needs Analysis</span>
+                                        <div className="w-2 h-2 bg-blue-500 rounded mr-2"></div>
+                                        <span>Revenue Recognized</span>
                                     </div>
                                     <div className="flex items-center text-xs">
                                         <div className="w-2 h-2 bg-purple-500 rounded mr-2"></div>
-                                        <span>Id. Decision Makers</span>
+                                        <span>Completed Projects</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="mt-3 text-center">
                                 <button className="text-blue-600 text-xs hover:underline">
-                                    View Report (Closed Won Opportunities by Quarter)
+                                    View Report (Closed Won Revenue by Quarter)
                                 </button>
                             </div>
                         </div>
@@ -329,22 +325,26 @@ const Dashboard = () => {
                         </div>
                         <div className="p-4 flex flex-col items-center justify-center h-full">
                             <div className="text-center">
-                                <div className="text-3xl font-bold text-teal-600 mb-2">
-                                  {analyticsData?.summary?.total_pipeline ? formatChartNumber(analyticsData.summary.total_pipeline) : '$2.1M'}
+                                <div className="text-3xl font-bold text-blue-600 mb-2">
+                                  {analyticsData?.summary?.total_pipeline ? formatChartNumber(analyticsData.summary.total_pipeline) : '$21.4M'}
                                 </div>
-                                <div className="text-xs text-gray-500 mb-3">Stage</div>
+                                <div className="text-xs text-gray-500 mb-3">Pipeline Stages</div>
                                 <div className="space-y-1">
                                     <div className="flex items-center text-xs">
                                         <div className="w-2 h-2 bg-blue-500 rounded mr-2"></div>
                                         <span>Prospecting</span>
                                     </div>
                                     <div className="flex items-center text-xs">
-                                        <div className="w-2 h-2 bg-green-500 rounded mr-2"></div>
+                                        <div className="w-2 h-2 bg-yellow-500 rounded mr-2"></div>
                                         <span>Qualification</span>
                                     </div>
                                     <div className="flex items-center text-xs">
-                                        <div className="w-2 h-2 bg-yellow-500 rounded mr-2"></div>
-                                        <span>Needs Analysis</span>
+                                        <div className="w-2 h-2 bg-orange-500 rounded mr-2"></div>
+                                        <span>Proposal</span>
+                                    </div>
+                                    <div className="flex items-center text-xs">
+                                        <div className="w-2 h-2 bg-purple-500 rounded mr-2"></div>
+                                        <span>Negotiation</span>
                                     </div>
                                 </div>
                             </div>

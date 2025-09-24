@@ -795,6 +795,7 @@ async def get_dashboard_analytics(db: Session = Depends(get_db)):
             "monthly_trends": monthly_trends,
             "summary": {
                 "total_pipeline": sum([deal.estimated_value or 0 for deal in deals]),
+                "total_sales": sum([deal.estimated_value or 0 for deal in deals if deal.deal_stage == "Closed Won"]),
                 "total_contacts": len(contacts),
                 "avg_deal_size": sum([deal.estimated_value or 0 for deal in deals]) / len(deals) if deals else 0,
                 "win_rate": 0.23  # Mock win rate
