@@ -73,9 +73,13 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
       await fetchDealDetails();
       
       toast.success('AI analysis completed', { id: 'ai-analysis' });
-      
-      // Switch to AI insights tab to show results
-      setActiveTab('ai-insights');
+
+      // Switch to appropriate tab based on deal status
+      if (dealData.deal.status === 'qualified_delivery') {
+        setActiveTab('resources');
+      } else {
+        setActiveTab('ai-insights');
+      }
     } catch (error) {
       console.error('Error triggering AI insight:', error);
       toast.error('Failed to generate AI insights', { id: 'ai-analysis' });
@@ -88,7 +92,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
     switch (status) {
       case 'lead': return 'Analyzing lead qualification...';
       case 'qualified_solution': return 'Designing technical solution...';
-      case 'qualified_delivery': return 'Planning delivery strategy...';
+      case 'qualified_delivery': return 'Planning delivery strategy and resource allocation...';
       case 'qualified_cso': return 'Generating commercial proposal...';
       default: return 'Running AI analysis...';
     }
@@ -274,7 +278,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
               {activeTab === 'technical' && <TechnicalTab dealData={dealData} />}
               {activeTab === 'ai-insights' && <AIInsightsTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
               {activeTab === 'timeline' && <TimelineTab dealData={dealData} />}
-              {activeTab === 'resources' && <ResourcesTab dealData={dealData} />}
+              {activeTab === 'resources' && <ResourcesTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
             </div>
           </>
         ) : (
@@ -815,40 +819,249 @@ const TimelineTab = ({ dealData }) => {
 };
 
 // Resources Tab Component
-const ResourcesTab = ({ dealData }) => {
-  const { resource_allocation, proposal } = dealData;
+const ResourcesTab = ({ dealData, triggerAIInsight, loading }) => {
+  const { resource_allocation, proposal, deal } = dealData;
+
+  // Parse JSON data safely
+  const parseJSONSafely = (jsonString, fallback = []) => {
+    try {
+      return jsonString ? JSON.parse(jsonString) : fallback;
+    } catch (error) {
+      console.error('Error parsing JSON:', error);
+      return fallback;
+    }
+  };
+
+  const teamComposition = parseJSONSafely(resource_allocation?.team_composition);
+  const milestoneBreakdown = parseJSONSafely(resource_allocation?.milestone_breakdown);
+  const resourceTimeline = parseJSONSafely(resource_allocation?.resource_timeline, '');
+
+  // Calculate total estimated hours from team composition and timeline
+  const calculateTotalHours = (team) => {
+    if (!Array.isArray(team)) return 0;
+
+    // If team members have explicit hours, use those
+    const explicitHours = team.reduce((total, member) => {
+      const hours = member.estimated_hours || member.hours || 0;
+      return total + (typeof hours === 'number' ? hours : 0);
+    }, 0);
+
+    if (explicitHours > 0) return explicitHours;
+
+    // Otherwise, calculate based on allocation and estimated timeline
+    // Assume 4 months average project duration and 160 hours per month per full-time person
+    const averageProjectMonths = 4;
+    const hoursPerMonth = 160;
+
+    return team.reduce((total, member) => {
+      const allocation = member.allocation || 1.0;
+      const estimatedHours = allocation * hoursPerMonth * averageProjectMonths;
+      return total + estimatedHours;
+    }, 0);
+  };
+
+  const totalHours = calculateTotalHours(teamComposition);
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'TBD';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   return (
     <div className="space-y-6">
+      {/* AI Trigger Section */}
+      <div className="border-b pb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Resource Planning</h3>
+            <p className="text-sm text-gray-500">AI-powered resource allocation and team planning</p>
+          </div>
+          {(!resource_allocation || deal?.status === 'qualified_delivery') && (
+            <button
+              onClick={triggerAIInsight}
+              disabled={loading}
+              className={`px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 ${
+                loading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              <Brain className="h-4 w-4" />
+              {loading ? 'Generating...' : 'Generate Resource Plan'}
+            </button>
+          )}
+        </div>
+      </div>
+
       {resource_allocation ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Resource Summary */}
           <div className="bg-blue-50 rounded-lg p-4">
-            <h3 className="font-medium text-blue-900 mb-2">Resource Summary</h3>
-            <p className="text-sm text-blue-800">{resource_allocation.allocation_summary}</p>
+            <h3 className="font-medium text-blue-900 mb-3 flex items-center">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Resource Summary
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-700">{totalHours}</div>
+                <div className="text-sm text-blue-600">Total Hours</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-700">{formatCurrency(resource_allocation.development_cost)}</div>
+                <div className="text-sm text-blue-600">Development Cost</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-700">{formatCurrency(resource_allocation.total_estimated_cost)}</div>
+                <div className="text-sm text-blue-600">Total Cost</div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-green-50 rounded-lg p-4">
-              <h3 className="font-medium text-green-900 mb-2">Team Structure</h3>
-              <p className="text-sm text-green-800">{resource_allocation.team_structure}</p>
-            </div>
+          {/* Team Structure */}
+          <div className="bg-green-50 rounded-lg p-4">
+            <h3 className="font-medium text-green-900 mb-3 flex items-center">
+              <Users className="h-4 w-4 mr-2" />
+              Team Structure
+            </h3>
+            {Array.isArray(teamComposition) && teamComposition.length > 0 ? (
+              <div className="space-y-3">
+                {teamComposition.map((member, index) => {
+                  const allocation = member.allocation || 1.0;
+                  const estimatedHours = member.estimated_hours || member.hours || (allocation * 160 * 4); // 4 months average
+                  const allocationPercent = Math.round(allocation * 100);
 
-            <div className="bg-purple-50 rounded-lg p-4">
-              <h3 className="font-medium text-purple-900 mb-2">Estimated Hours</h3>
-              <p className="text-sm text-purple-800">{resource_allocation.estimated_hours} hours</p>
-            </div>
+                  return (
+                    <div key={index} className="flex justify-between items-center bg-white rounded p-3">
+                      <div className="flex-1">
+                        <div className="font-medium text-green-900">{member.role || member.name || 'Team Member'}</div>
+                        <div className="text-sm text-green-700">
+                          {Array.isArray(member.skills_required)
+                            ? member.skills_required.join(', ')
+                            : (member.skills || member.description || 'Various skills')
+                          }
+                        </div>
+                        {Array.isArray(member.responsibilities) && member.responsibilities.length > 0 && (
+                          <div className="text-xs text-green-600 mt-1">
+                            {member.responsibilities.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="font-medium text-green-900">{Math.round(estimatedHours)}h</div>
+                        <div className="text-sm text-green-700">{allocationPercent}% allocation</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-green-800">Team composition will be determined during planning phase</p>
+            )}
           </div>
+
+          {/* Project Timeline & Milestones */}
+          <div className="bg-purple-50 rounded-lg p-4">
+            <h3 className="font-medium text-purple-900 mb-3 flex items-center">
+              <Calendar className="h-4 w-4 mr-2" />
+              Project Timeline & Milestones
+            </h3>
+            {Array.isArray(milestoneBreakdown) && milestoneBreakdown.length > 0 ? (
+              <div className="space-y-3">
+                {milestoneBreakdown.map((milestone, index) => (
+                  <div key={index} className="bg-white rounded p-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-medium text-purple-900">{milestone.phase || milestone.name || `Phase ${index + 1}`}</div>
+                        <div className="text-sm text-purple-700 mt-1">{milestone.description || milestone.deliverables || 'Key deliverables and activities'}</div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-sm font-medium text-purple-900">{milestone.duration || milestone.timeline || 'TBD'}</div>
+                        <div className="text-xs text-purple-700">{milestone.effort || milestone.hours || ''}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-purple-700 mb-1">Estimated Start Date</div>
+                  <div className="font-medium text-purple-900">
+                    {resource_allocation.estimated_start_date
+                      ? new Date(resource_allocation.estimated_start_date).toLocaleDateString()
+                      : 'TBD'
+                    }
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-purple-700 mb-1">Estimated Delivery Date</div>
+                  <div className="font-medium text-purple-900">
+                    {resource_allocation.estimated_delivery_date
+                      ? new Date(resource_allocation.estimated_delivery_date).toLocaleDateString()
+                      : 'TBD'
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* AI Confidence & Metadata */}
+          {resource_allocation.ai_confidence_score && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                <Brain className="h-4 w-4 mr-2" />
+                AI Analysis Confidence
+              </h3>
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Confidence Score</span>
+                    <span>{Math.round(resource_allocation.ai_confidence_score)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{ width: `${resource_allocation.ai_confidence_score}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Generated by</div>
+                  <div className="text-sm font-medium">{resource_allocation.generated_by || 'AI Agent'}</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-8">
-          <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No resource allocation data available</p>
+          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Resource Plan Yet</h3>
+          <p className="text-gray-500 mb-4">Generate an AI-powered resource allocation plan for this deal</p>
+          <button
+            onClick={triggerAIInsight}
+            disabled={loading}
+            className={`px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <Brain className="h-5 w-5" />
+            {loading ? 'Generating Resource Plan...' : 'Generate Resource Plan'}
+          </button>
         </div>
       )}
 
       {proposal && (
         <div className="bg-yellow-50 rounded-lg p-4">
-          <h3 className="font-medium text-yellow-900 mb-2">Proposal</h3>
+          <h3 className="font-medium text-yellow-900 mb-2 flex items-center">
+            <FileText className="h-4 w-4 mr-2" />
+            Proposal Summary
+          </h3>
           <p className="text-sm text-yellow-800">{proposal.proposal_summary}</p>
         </div>
       )}

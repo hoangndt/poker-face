@@ -1123,9 +1123,10 @@ async def _trigger_delivery_planning(deal_id: int, db: Session) -> dict:
         # Extract budget estimate and set cost fields with proper parsing
         budget_data = analysis.get('budget_estimate', {})
         resource_allocation.development_cost = parse_budget_value(budget_data.get('development_cost', 0))
-        resource_allocation.total_estimated_cost = parse_budget_value(budget_data.get('total_cost', 0))
+        resource_allocation.total_estimated_cost = parse_budget_value(budget_data.get('total_cost', budget_data.get('total_estimate', 0)))
         
         resource_allocation.skill_gaps = json.dumps(analysis.get('risk_mitigation', []))
+        resource_allocation.ai_confidence_score = analysis.get('confidence', 70.0)
     else:
         budget_data = analysis.get('budget_estimate', {})
         resource_allocation = ResourceAllocation(
@@ -1134,8 +1135,9 @@ async def _trigger_delivery_planning(deal_id: int, db: Session) -> dict:
             milestone_breakdown=json.dumps(analysis.get('project_phases', [])),
             resource_timeline=json.dumps(analysis.get('resource_timeline', '')),
             development_cost=parse_budget_value(budget_data.get('development_cost', 0)),
-            total_estimated_cost=parse_budget_value(budget_data.get('total_cost', 0)),
-            skill_gaps=json.dumps(analysis.get('risk_mitigation', []))
+            total_estimated_cost=parse_budget_value(budget_data.get('total_cost', budget_data.get('total_estimate', 0))),
+            skill_gaps=json.dumps(analysis.get('risk_mitigation', [])),
+            ai_confidence_score=analysis.get('confidence', 70.0)
         )
         db.add(resource_allocation)
     
