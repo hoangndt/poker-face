@@ -415,3 +415,34 @@ class CommentResponse(CommentBase):
 
     class Config:
         from_attributes = True
+
+# Customer Satisfaction Schemas
+class CustomerSatisfactionBase(BaseModel):
+    overall_satisfaction_score: Optional[float] = None
+    nps_score: Optional[int] = None
+    customer_health_status: Optional[str] = None
+    implementation_status: Optional[str] = None
+    completion_percentage: Optional[float] = None
+    current_phase: Optional[str] = None
+    latest_feedback: Optional[str] = None
+    testimonial: Optional[str] = None
+    last_contact_date: Optional[datetime] = None
+    next_check_in_date: Optional[datetime] = None
+    support_tickets_count: Optional[int] = None
+    support_tickets_resolved: Optional[int] = None
+    usage_score: Optional[float] = None
+
+class CustomerSatisfactionCreate(CustomerSatisfactionBase):
+    deal_id: int
+
+class CustomerSatisfactionUpdate(CustomerSatisfactionBase):
+    pass
+
+class CustomerSatisfactionResponse(CustomerSatisfactionBase):
+    id: int
+    deal_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

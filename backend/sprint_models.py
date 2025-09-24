@@ -145,6 +145,7 @@ class Deal(Base):
     ai_insights = relationship("AIInsight", back_populates="deal")
     status_history = relationship("StatusHistory", back_populates="deal")
     comments = relationship("Comment", back_populates="deal")
+    customer_satisfaction = relationship("CustomerSatisfaction", back_populates="deal", uselist=False)
 
 # Customer Conversation Data
 class ConversationData(Base):
@@ -386,6 +387,41 @@ class ResourceRating(Base):
     current_workload = Column(Float, default=0)  # 0-1 scale
     preferred_project_types = Column(Text)  # JSON string
     availability_start_date = Column(DateTime)
+
+# Customer Success Tracking
+class CustomerSatisfaction(Base):
+    __tablename__ = "customer_satisfaction"
+
+    id = Column(Integer, primary_key=True, index=True)
+    deal_id = Column(Integer, ForeignKey("deals.id"), unique=True)
+
+    # Satisfaction Metrics
+    overall_satisfaction_score = Column(Float)  # 1-10 scale
+    nps_score = Column(Integer)  # Net Promoter Score (-100 to 100)
+    customer_health_status = Column(String)  # "Green", "Yellow", "Red"
+
+    # Implementation Progress
+    implementation_status = Column(String)  # "Planning", "In Progress", "Testing", "Completed", "On Hold"
+    completion_percentage = Column(Float, default=0)  # 0-100
+    current_phase = Column(String)  # Current project phase
+
+    # Feedback and Communication
+    latest_feedback = Column(Text)
+    testimonial = Column(Text)
+    last_contact_date = Column(DateTime)
+    next_check_in_date = Column(DateTime)
+
+    # Support and Engagement
+    support_tickets_count = Column(Integer, default=0)
+    support_tickets_resolved = Column(Integer, default=0)
+    usage_score = Column(Float)  # 0-100 engagement/usage percentage
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    deal = relationship("Deal", back_populates="customer_satisfaction")
 
 # Deal Comments
 class Comment(Base):

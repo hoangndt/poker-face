@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 import json
 import re
@@ -9,7 +10,7 @@ from database import get_db
 from sprint_models import (
     Deal, Person, ConversationData, TechnicalSolution,
     ResourceAllocation, Proposal, AIInsight, StatusHistory, Comment, Contact,
-    DealStatus, Priority, PersonRole
+    CustomerSatisfaction, DealStatus, Priority, PersonRole
 )
 from sprint_schemas import (
     DealCreate, DealUpdate, DealResponse, SprintBoardResponse,
@@ -1469,3 +1470,173 @@ def get_contacts_summary(db: Session = Depends(get_db)):
         "total_estimated_revenue": total_revenue,
         "average_gmv": average_gmv
     }
+
+# Customer Success Endpoints
+@router.get("/customer-success/summary")
+async def get_customer_success_summary(db: Session = Depends(get_db)):
+    """Get customer success summary statistics"""
+    try:
+        # Get all closed won deals with satisfaction data
+        closed_deals = db.query(Deal).filter(Deal.deal_stage == "Closed Won").all()
+
+        # Calculate summary statistics
+        total_customers = len(closed_deals)
+        total_revenue = sum([deal.estimated_value or 0 for deal in closed_deals])
+        average_deal_size = total_revenue / total_customers if total_customers > 0 else 0
+
+        # Get satisfaction metrics
+        satisfaction_data = db.query(CustomerSatisfaction).all()
+        avg_satisfaction = sum([cs.overall_satisfaction_score or 0 for cs in satisfaction_data]) / len(satisfaction_data) if satisfaction_data else 0
+        avg_nps = sum([cs.nps_score or 0 for cs in satisfaction_data]) / len(satisfaction_data) if satisfaction_data else 0
+
+        # Health status distribution
+        health_counts = {"Green": 0, "Yellow": 0, "Red": 0}
+        for cs in satisfaction_data:
+            if cs.customer_health_status in health_counts:
+                health_counts[cs.customer_health_status] += 1
+
+        return {
+            "total_customers": total_customers,
+            "total_revenue": total_revenue,
+            "average_deal_size": average_deal_size,
+            "average_satisfaction_score": round(avg_satisfaction, 1),
+            "average_nps_score": round(avg_nps, 0),
+            "health_status_distribution": health_counts
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching customer success summary: {str(e)}")
+
+@router.get("/customer-success/customers")
+async def get_customer_success_list(
+    search: Optional[str] = None,
+    sort_by: Optional[str] = "close_date",
+    sort_order: Optional[str] = "desc",
+    db: Session = Depends(get_db)
+):
+    """Get list of customers with successful deals"""
+    try:
+        # Base query for closed won deals
+        query = db.query(Deal).filter(Deal.deal_stage == "Closed Won")
+
+        # Apply search filter
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Deal.customer_name.ilike(search_term),
+                    Deal.title.ilike(search_term),
+                    Deal.contact_person.ilike(search_term)
+                )
+            )
+
+        # Apply sorting
+        if sort_by == "deal_value":
+            order_column = Deal.estimated_value
+        elif sort_by == "close_date":
+            order_column = Deal.actual_close_date
+        elif sort_by == "customer_name":
+            order_column = Deal.customer_name
+        else:
+            order_column = Deal.actual_close_date
+
+        if sort_order == "asc":
+            query = query.order_by(order_column.asc())
+        else:
+            query = query.order_by(order_column.desc())
+
+        deals = query.all()
+
+        # Format response with satisfaction data
+        customers = []
+        for deal in deals:
+            satisfaction = db.query(CustomerSatisfaction).filter(CustomerSatisfaction.deal_id == deal.id).first()
+
+            customer_data = {
+                "id": deal.id,
+                "customer_name": deal.customer_name,
+                "deal_title": deal.title,
+                "deal_value": deal.estimated_value,
+                "close_date": deal.actual_close_date,
+                "assigned_person": {
+                    "name": deal.assigned_person.name if deal.assigned_person else None,
+                    "email": deal.assigned_person.email if deal.assigned_person else None
+                },
+                "region": deal.region,
+                "country": deal.country,
+                "implementation_time": deal.implementation_time,
+                "satisfaction": {
+                    "overall_score": satisfaction.overall_satisfaction_score if satisfaction else None,
+                    "nps_score": satisfaction.nps_score if satisfaction else None,
+                    "health_status": satisfaction.customer_health_status if satisfaction else "Unknown",
+                    "implementation_status": satisfaction.implementation_status if satisfaction else "Unknown",
+                    "completion_percentage": satisfaction.completion_percentage if satisfaction else 0
+                } if satisfaction else None
+            }
+            customers.append(customer_data)
+
+        return customers
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching customer success list: {str(e)}")
+
+@router.get("/customer-success/customers/{deal_id}")
+async def get_customer_success_detail(deal_id: int, db: Session = Depends(get_db)):
+    """Get detailed customer success information for a specific deal"""
+    try:
+        # Get the deal
+        deal = db.query(Deal).filter(Deal.id == deal_id, Deal.deal_stage == "Closed Won").first()
+        if not deal:
+            raise HTTPException(status_code=404, detail="Customer not found or deal not closed")
+
+        # Get satisfaction data
+        satisfaction = db.query(CustomerSatisfaction).filter(CustomerSatisfaction.deal_id == deal_id).first()
+
+        # Get conversation data for additional context
+        conversation = db.query(ConversationData).filter(ConversationData.deal_id == deal_id).first()
+
+        return {
+            "deal": {
+                "id": deal.id,
+                "title": deal.title,
+                "customer_name": deal.customer_name,
+                "contact_person": deal.contact_person,
+                "customer_email": deal.customer_email,
+                "estimated_value": deal.estimated_value,
+                "actual_close_date": deal.actual_close_date,
+                "expected_close_date": deal.expected_close_date,
+                "implementation_time": deal.implementation_time,
+                "region": deal.region,
+                "country": deal.country,
+                "deal_description": deal.deal_description,
+                "assigned_person": {
+                    "name": deal.assigned_person.name if deal.assigned_person else None,
+                    "email": deal.assigned_person.email if deal.assigned_person else None,
+                    "department": deal.assigned_person.department if deal.assigned_person else None
+                }
+            },
+            "satisfaction": {
+                "overall_satisfaction_score": satisfaction.overall_satisfaction_score,
+                "nps_score": satisfaction.nps_score,
+                "customer_health_status": satisfaction.customer_health_status,
+                "implementation_status": satisfaction.implementation_status,
+                "completion_percentage": satisfaction.completion_percentage,
+                "current_phase": satisfaction.current_phase,
+                "latest_feedback": satisfaction.latest_feedback,
+                "testimonial": satisfaction.testimonial,
+                "last_contact_date": satisfaction.last_contact_date,
+                "next_check_in_date": satisfaction.next_check_in_date,
+                "support_tickets_count": satisfaction.support_tickets_count,
+                "support_tickets_resolved": satisfaction.support_tickets_resolved,
+                "usage_score": satisfaction.usage_score,
+                "created_at": satisfaction.created_at,
+                "updated_at": satisfaction.updated_at
+            } if satisfaction else None,
+            "conversation": {
+                "customer_requirements": conversation.customer_requirements if conversation else None,
+                "business_goals": conversation.business_goals if conversation else None,
+                "pain_points": conversation.pain_points if conversation else None
+            } if conversation else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching customer success detail: {str(e)}")
