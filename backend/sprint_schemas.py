@@ -60,6 +60,8 @@ class ContactBase(BaseModel):
     delivery_team_assigned: Optional[str] = None
     solution_designer_id: Optional[int] = None
     note: Optional[str] = None
+    lead_source: Optional[str] = None
+    solution_interest: Optional[str] = None
     related_deal_id: Optional[int] = None
 
 class ContactCreate(ContactBase):
@@ -79,6 +81,8 @@ class ContactUpdate(BaseModel):
     delivery_team_assigned: Optional[str] = None
     solution_designer_id: Optional[int] = None
     note: Optional[str] = None
+    lead_source: Optional[str] = None
+    solution_interest: Optional[str] = None
     related_deal_id: Optional[int] = None
 
 class ContactResponse(ContactBase):

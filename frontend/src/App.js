@@ -38,12 +38,25 @@ function App() {
                 <Icon icon="solar:chart-2-bold" className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900">
-                Customer AI
+                FlowCast AI
               </span>
             </div>
           </div>
 
           <nav className="space-y-1 p-4">
+              <NavLink
+                  to="/dashboard"
+                  className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-2 text-sm rounded-md transition-colors ${
+                          isActive
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                      }`
+                  }
+              >
+                  <Icon icon="solar:widget-4-bold-duotone" className="h-5 w-5" />
+                  <span>Dashboard</span>
+              </NavLink>
             <NavLink
               to="/"
               className={({ isActive }) =>

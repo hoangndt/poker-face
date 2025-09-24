@@ -74,6 +74,8 @@ class Contact(Base):
 
     # Additional Information
     note = Column(Text)  # Additional notes or comments
+    lead_source = Column(String)  # How the contact was acquired
+    solution_interest = Column(String)  # What type of solution they're interested in
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

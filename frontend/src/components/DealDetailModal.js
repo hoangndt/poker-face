@@ -29,7 +29,13 @@ import {
   Trash2,
   FileCheck,
   AlertTriangle,
-  Star
+  Star,
+  MessageCircle,
+  Search,
+  Filter,
+  ExternalLink,
+  Video,
+  Linkedin
 } from 'lucide-react';
 import { sprintAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -197,9 +203,10 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Circle },
     { id: 'conversation', label: 'Conversation', icon: MessageSquare },
+    { id: 'activities', label: 'Activities', icon: Activity },
     { id: 'technical', label: 'Technical', icon: Settings },
     { id: 'ai-insights', label: 'AI Insights', icon: Brain },
-    { id: 'timeline', label: 'Timeline', icon: Activity },
+    { id: 'timeline', label: 'Timeline', icon: Clock },
     { id: 'resources', label: 'Resources', icon: User },
     { id: 'proposal', label: 'Proposal', icon: FileText },
   ];
@@ -281,6 +288,7 @@ const DealDetailModal = ({ dealId, isOpen, onClose }) => {
                 isPostingComment={isPostingComment}
               />}
               {activeTab === 'conversation' && <ConversationTab dealData={dealData} />}
+              {activeTab === 'activities' && <ActivitiesTab dealData={dealData} />}
               {activeTab === 'technical' && <TechnicalTab dealData={dealData} />}
               {activeTab === 'ai-insights' && <AIInsightsTab dealData={dealData} triggerAIInsight={triggerAIInsight} loading={loading} />}
               {activeTab === 'timeline' && <TimelineTab dealData={dealData} />}
@@ -819,6 +827,407 @@ const TimelineTab = ({ dealData }) => {
         <div className="text-center py-8">
           <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500">No timeline data available</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Activities Tab Component
+const ActivitiesTab = ({ dealData }) => {
+  const [filterType, setFilterType] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showNewActivityModal, setShowNewActivityModal] = useState(false);
+  const [selectedActivityType, setSelectedActivityType] = useState('email');
+
+  // Extract existing conversation data
+  const { conversation_data, comments, status_history } = dealData;
+
+  // Convert existing data to activity format and combine with mock data
+  const existingActivities = [];
+
+  // Add conversation data as activity
+  if (conversation_data?.sales_notes) {
+    existingActivities.push({
+      id: 'conv-1',
+      type: conversation_data.communication_channel || 'email',
+      direction: 'inbound',
+      subject: 'Initial Conversation Notes',
+      content: conversation_data.sales_notes,
+      participant: 'Customer',
+      timestamp: conversation_data.last_conversation_date ? new Date(conversation_data.last_conversation_date) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      status: 'completed'
+    });
+  }
+
+  // Add comments as activities
+  if (comments && comments.length > 0) {
+    comments.forEach((comment, index) => {
+      existingActivities.push({
+        id: `comment-${comment.id}`,
+        type: 'other',
+        direction: 'internal',
+        subject: 'Internal Note',
+        content: comment.content,
+        participant: comment.author_name || 'Team Member',
+        timestamp: new Date(comment.created_at),
+        status: 'completed'
+      });
+    });
+  }
+
+  // Mock activities data for demonstration
+  const mockActivities = [
+    {
+      id: 1,
+      type: 'email',
+      direction: 'outbound',
+      subject: 'Follow-up on Technical Requirements',
+      content: 'Hi John, Following up on our discussion about the technical requirements...',
+      participant: 'john.doe@client.com',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      status: 'delivered',
+      important: true
+    },
+    {
+      id: 2,
+      type: 'linkedin',
+      direction: 'inbound',
+      subject: 'Connection Request Accepted',
+      content: 'Thanks for connecting! Looking forward to our collaboration.',
+      participant: 'Sarah Johnson',
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+      status: 'read'
+    },
+    {
+      id: 3,
+      type: 'phone',
+      direction: 'outbound',
+      subject: 'Discovery Call',
+      content: 'Discussed project scope, timeline, and budget requirements. Client interested in Q2 implementation.',
+      participant: '+1 (555) 123-4567',
+      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+      status: 'completed',
+      duration: '45 minutes'
+    },
+    {
+      id: 4,
+      type: 'whatsapp',
+      direction: 'inbound',
+      subject: 'Quick Question',
+      content: 'Can we schedule a call for tomorrow?',
+      participant: 'John Doe',
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      status: 'replied'
+    },
+    {
+      id: 5,
+      type: 'meeting',
+      direction: 'scheduled',
+      subject: 'Technical Architecture Review',
+      content: 'Review proposed technical architecture and discuss implementation approach.',
+      participant: 'Technical Team',
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      status: 'completed',
+      duration: '90 minutes'
+    },
+    {
+      id: 6,
+      type: 'email',
+      direction: 'inbound',
+      subject: 'Proposal Feedback',
+      content: 'We have reviewed your proposal and have some questions about the timeline...',
+      participant: 'procurement@client.com',
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+      status: 'replied'
+    }
+  ];
+
+  // Combine existing and mock activities, sort by timestamp
+  const allActivities = [...existingActivities, ...mockActivities].sort((a, b) => b.timestamp - a.timestamp);
+
+  // Activity type configuration
+  const activityTypes = {
+    email: {
+      icon: Mail,
+      bgColor: 'bg-blue-100',
+      textColor: 'text-blue-600',
+      label: 'Email'
+    },
+    linkedin: {
+      icon: Linkedin,
+      bgColor: 'bg-indigo-100',
+      textColor: 'text-indigo-600',
+      label: 'LinkedIn'
+    },
+    whatsapp: {
+      icon: MessageCircle,
+      bgColor: 'bg-green-100',
+      textColor: 'text-green-600',
+      label: 'WhatsApp'
+    },
+    phone: {
+      icon: Phone,
+      bgColor: 'bg-purple-100',
+      textColor: 'text-purple-600',
+      label: 'Phone'
+    },
+    meeting: {
+      icon: Video,
+      bgColor: 'bg-orange-100',
+      textColor: 'text-orange-600',
+      label: 'Meeting'
+    },
+    other: {
+      icon: MessageSquare,
+      bgColor: 'bg-gray-100',
+      textColor: 'text-gray-600',
+      label: 'Other'
+    }
+  };
+
+  // Filter activities
+  const filteredActivities = allActivities.filter(activity => {
+    const matchesType = filterType === 'all' || activity.type === filterType;
+    const matchesSearch = searchTerm === '' ||
+      activity.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.participant.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesType && matchesSearch;
+  });
+
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    const now = new Date();
+    const diff = now - timestamp;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (hours < 1) return 'Just now';
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return timestamp.toLocaleDateString();
+  };
+
+  // Get status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'delivered': return 'text-blue-600';
+      case 'read': return 'text-green-600';
+      case 'replied': return 'text-purple-600';
+      case 'completed': return 'text-green-600';
+      case 'pending': return 'text-yellow-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  // Get direction indicator
+  const getDirectionIcon = (direction) => {
+    switch (direction) {
+      case 'inbound': return '↓';
+      case 'outbound': return '↑';
+      case 'scheduled': return '📅';
+      case 'internal': return '🏢';
+      default: return '•';
+    }
+  };
+
+  // Check if activity is internal
+  const isInternalActivity = (activity) => {
+    return activity.direction === 'internal' || activity.type === 'other';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Quick Actions */}
+      <div className="border-b pb-4">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Communication Activities</h3>
+            <p className="text-sm text-gray-500">Multi-channel communication timeline and management</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {setSelectedActivityType('email'); setShowNewActivityModal(true);}}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Mail className="h-4 w-4" />
+              Email
+            </button>
+            <button
+              onClick={() => {setSelectedActivityType('linkedin'); setShowNewActivityModal(true);}}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Linkedin className="h-4 w-4" />
+              LinkedIn
+            </button>
+            <button
+              onClick={() => {setSelectedActivityType('whatsapp'); setShowNewActivityModal(true);}}
+              className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </button>
+            <button
+              onClick={() => {setSelectedActivityType('phone'); setShowNewActivityModal(true);}}
+              className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Phone className="h-4 w-4" />
+              Call
+            </button>
+          </div>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-500" />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Activities</option>
+              <option value="email">Email</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="phone">Phone</option>
+              <option value="meeting">Meetings</option>
+            </select>
+          </div>
+          <div className="flex-1 relative">
+            <Search className="h-4 w-4 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search activities..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Activity Timeline */}
+      <div className="space-y-4">
+        {filteredActivities.length > 0 ? (
+          filteredActivities.map((activity) => {
+            const activityConfig = activityTypes[activity.type] || activityTypes.other;
+            const ActivityIcon = activityConfig.icon;
+
+            const isInternal = isInternalActivity(activity);
+
+            return (
+              <div key={activity.id} className={`${isInternal ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200'} border rounded-lg p-4 hover:shadow-md transition-shadow`}>
+                <div className="flex items-start gap-4">
+                  {/* Activity Icon */}
+                  <div className={`flex-shrink-0 w-10 h-10 ${activityConfig.bgColor} rounded-full flex items-center justify-center`}>
+                    <ActivityIcon className={`h-5 w-5 ${activityConfig.textColor}`} />
+                  </div>
+
+                  {/* Activity Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-gray-900 truncate">{activity.subject}</h4>
+                          <span className="text-sm text-gray-500">{getDirectionIcon(activity.direction)}</span>
+                          {activity.important && (
+                            <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{activity.content}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>{activity.participant}</span>
+                          <span>•</span>
+                          <span>{formatTimestamp(activity.timestamp)}</span>
+                          {activity.duration && (
+                            <>
+                              <span>•</span>
+                              <span>{activity.duration}</span>
+                            </>
+                          )}
+                          <span className={`font-medium ${getStatusColor(activity.status)}`}>
+                            {activity.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 ml-4">
+                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                          <Star className="h-4 w-4" />
+                        </button>
+                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-8">
+            <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Activities Found</h3>
+            <p className="text-gray-500 mb-4">
+              {searchTerm || filterType !== 'all'
+                ? 'Try adjusting your search or filter criteria'
+                : 'Start communicating with your contacts to see activities here'
+              }
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Activity Summary Stats */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h4 className="font-medium text-gray-900 mb-3">Activity Summary</h4>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {Object.entries(activityTypes).map(([type, config]) => {
+            const count = allActivities.filter(a => a.type === type).length;
+            if (count === 0) return null;
+
+            return (
+              <div key={type} className="text-center">
+                <div className={`w-8 h-8 ${config.bgColor} rounded-full flex items-center justify-center mx-auto mb-1`}>
+                  <config.icon className={`h-4 w-4 ${config.textColor}`} />
+                </div>
+                <div className="text-lg font-semibold text-gray-900">{count}</div>
+                <div className="text-xs text-gray-500">{config.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* New Activity Modal Placeholder */}
+      {showNewActivityModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium mb-4">
+              New {activityTypes[selectedActivityType]?.label} Activity
+            </h3>
+            <p className="text-gray-600 mb-4">
+              This would open a form to create a new {selectedActivityType} activity.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowNewActivityModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setShowNewActivityModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Create
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

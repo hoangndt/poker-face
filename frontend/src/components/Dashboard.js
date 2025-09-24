@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   RefreshCw,
   Download,
-  Settings
+  Settings,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Target,
+  DollarSign
 } from 'lucide-react';
 import {
   BarChart,
@@ -14,7 +19,9 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
 import { sprintAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -361,6 +368,205 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+        </div>
+
+        {/* Lead Performance Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          {/* Lead Performance Analytics */}
+          <div className="lg:col-span-4">
+            <div className="bg-white rounded-lg shadow border">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-gray-900">Lead Performance Analytics</h3>
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <Settings className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs text-gray-500">Lead Generation & Conversion Metrics</div>
+                </div>
+              </div>
+              <div className="p-6">
+                {(() => {
+                  // Calculate lead performance metrics
+                  const currentMonth = analyticsData?.monthly_trends?.[analyticsData.monthly_trends.length - 1];
+                  const previousMonth = analyticsData?.monthly_trends?.[analyticsData.monthly_trends.length - 2];
+
+                  const currentContacts = currentMonth?.contacts || 0;
+                  const previousContacts = previousMonth?.contacts || 0;
+                  const contactsGrowth = previousContacts > 0 ? ((currentContacts - previousContacts) / previousContacts * 100) : 0;
+
+                  const currentDeals = currentMonth?.deals || 0;
+                  const previousDeals = previousMonth?.deals || 0;
+                  const dealsGrowth = previousDeals > 0 ? ((currentDeals - previousDeals) / previousDeals * 100) : 0;
+
+                  const currentRevenue = currentMonth?.revenue || 0;
+                  const previousRevenue = previousMonth?.revenue || 0;
+                  const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue * 100) : 0;
+
+                  // Calculate conversion rates
+                  const leadToQualifiedRate = currentContacts > 0 ? (currentDeals / currentContacts * 100) : 0;
+                  const qualifiedToConvertedRate = currentDeals > 0 ? (currentRevenue > 0 ? 100 : 0) : 0;
+
+                  // Calculate average deal size for current month
+                  const avgDealSize = currentDeals > 0 ? (currentRevenue / currentDeals) : 0;
+
+                  // Calculate total metrics for the period
+                  const totalContacts = analyticsData?.monthly_trends?.reduce((sum, month) => sum + month.contacts, 0) || 0;
+                  const totalDeals = analyticsData?.monthly_trends?.reduce((sum, month) => sum + month.deals, 0) || 0;
+                  const totalRevenue = analyticsData?.monthly_trends?.reduce((sum, month) => sum + month.revenue, 0) || 0;
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      {/* New Leads */}
+                      <div className="text-center">
+                        <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-3">
+                          <Users className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 mb-1">{currentContacts}</div>
+                        <div className="text-sm text-gray-600 mb-2">New Leads</div>
+                        <div className={`flex items-center justify-center text-xs ${contactsGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {contactsGrowth >= 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                          {Math.abs(contactsGrowth).toFixed(1)}% vs last month
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Total: {totalContacts}</div>
+                      </div>
+
+                      {/* Qualified Leads */}
+                      <div className="text-center">
+                        <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-3">
+                          <Target className="h-6 w-6 text-green-600" />
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 mb-1">{currentDeals}</div>
+                        <div className="text-sm text-gray-600 mb-2">Qualified Leads</div>
+                        <div className={`flex items-center justify-center text-xs ${dealsGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {dealsGrowth >= 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                          {Math.abs(dealsGrowth).toFixed(1)}% vs last month
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Total: {totalDeals}</div>
+                      </div>
+
+                      {/* Converted Revenue */}
+                      <div className="text-center">
+                        <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mx-auto mb-3">
+                          <DollarSign className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900 mb-1">{formatChartNumber(currentRevenue)}</div>
+                        <div className="text-sm text-gray-600 mb-2">Monthly Revenue</div>
+                        <div className={`flex items-center justify-center text-xs ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {revenueGrowth >= 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                          {Math.abs(revenueGrowth).toFixed(1)}% vs last month
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Total: {formatCurrency(totalRevenue)}</div>
+                      </div>
+
+                      {/* Conversion Rates */}
+                      <div className="text-center">
+                        <div className="space-y-4">
+                          <div>
+                            <div className="text-lg font-bold text-gray-900">{leadToQualifiedRate.toFixed(1)}%</div>
+                            <div className="text-xs text-gray-600">Lead → Qualified</div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${Math.min(leadToQualifiedRate, 100)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-gray-900">{analyticsData?.summary?.win_rate ? (analyticsData.summary.win_rate * 100).toFixed(1) : '23.0'}%</div>
+                            <div className="text-xs text-gray-600">Win Rate</div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                              <div
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{ width: `${analyticsData?.summary?.win_rate ? analyticsData.summary.win_rate * 100 : 23}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Performance Insights */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(() => {
+                      const currentMonth = analyticsData?.monthly_trends?.[analyticsData.monthly_trends.length - 1];
+                      const avgDealSize = currentMonth?.deals > 0 ? (currentMonth.revenue / currentMonth.deals) : 0;
+                      const totalPipelineValue = analyticsData?.summary?.total_pipeline || 0;
+                      const avgDealSizeOverall = analyticsData?.summary?.avg_deal_size || 0;
+
+                      return (
+                        <>
+                          <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <div className="text-lg font-semibold text-gray-900">{formatCurrency(avgDealSize)}</div>
+                            <div className="text-sm text-gray-600">Avg Deal Size (Current)</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Overall: {formatCurrency(avgDealSizeOverall)}
+                            </div>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <div className="text-lg font-semibold text-gray-900">{formatChartNumber(totalPipelineValue)}</div>
+                            <div className="text-sm text-gray-600">Total Pipeline Value</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Active opportunities
+                            </div>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <div className="text-lg font-semibold text-gray-900">
+                              {analyticsData?.summary?.total_contacts || 0}
+                            </div>
+                            <div className="text-sm text-gray-600">Total Contacts</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              All time leads
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Trend Chart */}
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900 mb-4">3-Month Trend</h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={analyticsData?.monthly_trends?.slice(-3) || []}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip
+                        formatter={(value, name) => {
+                          if (name === 'revenue') return [formatCurrency(value), 'Revenue'];
+                          return [value, name === 'contacts' ? 'New Leads' : 'Qualified Leads'];
+                        }}
+                      />
+                      <Line yAxisId="left" type="monotone" dataKey="contacts" stroke="#3B82F6" strokeWidth={2} name="contacts" />
+                      <Line yAxisId="left" type="monotone" dataKey="deals" stroke="#10B981" strokeWidth={2} name="deals" />
+                      <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#8B5CF6" strokeWidth={2} name="revenue" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="flex justify-center space-x-6 mt-2">
+                    <div className="flex items-center text-xs">
+                      <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                      <span>New Leads</span>
+                    </div>
+                    <div className="flex items-center text-xs">
+                      <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                      <span>Qualified Leads</span>
+                    </div>
+                    <div className="flex items-center text-xs">
+                      <div className="w-3 h-3 bg-purple-500 rounded mr-2"></div>
+                      <span>Revenue</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Bottom Row - Additional Charts */}
